@@ -11,4 +11,6 @@ const SubscriptionSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
+
+
 export default mongoose.model("Subscription", SubscriptionSchema);
