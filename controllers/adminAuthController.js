@@ -1,30 +1,29 @@
 import { Router } from "express";
-import User from "../models/User";
-import jwt from "jsonwebtoken";
+import UserAdmin from "../models/UserAdmin";
+import jwt from "jsonwebtoken"
+import verifySuperAdminToken from "../middlewares/verifySuperAdminToken";
 
 const router = Router();
 
 
-// USER REGISTRATION
-router.post("/register", async (req, res) => {
-    const { password, ...userData } = req.body;
+// USER-ADMIN REGISTRATION(Only superadmin can create a new admin)
+router.post("/admin/register", verifySuperAdminToken, async (req, res) => {
+    const { name, email, password, role } = req.body;
 
     try {
-        // Call the static signup method of the User model
-        const user = await User.signup(password, userData);
 
-        // Ensure user exists and has a _doc property
-        if (!user || !user._doc) {
-            return res.status(500).json({ error: "User registration failed" });
+        // Validate role to prevent unauthorized users from setting their own role as superadmin
+        if (!["superadmin", "moderator"].includes(role)) {
+          return res.status(400).json({ error: "Invalid role. Allowed roles: superadmin, moderator." }); 
         }
 
-        // Destructure user object and omit 'password' field
-        const { password: hashedPassword, ...userDataWithoutPassword } = user._doc;
-    
-        // If signup is successful, send a success response
-        res.status(200).json({ ...userDataWithoutPassword });
-    
-    } catch(error) {
+        //Call the signup method from the UserAdmin model
+        const newAdmin = await UserAdmin.signup(password, { name, email, role });
+
+        // Respond with success message
+        res.status(201).json({ message: "Admin created successfully", admin: newAdmin });
+
+    }catch(error) {
         // If an error occurs during signup, send an error response
         res.status(400).json({error: error.message});
     }
@@ -34,28 +33,28 @@ router.post("/register", async (req, res) => {
 
 
 // LOGIN
-router.post("/login", async (req, res) => {
-    const { username, password } = req.body;
+router.post("/admin/login", async (req, res) => {
+    const { email, password } = req.body;
 
     try {  
         
-        const user = await User.login(username, password);
+         const userAdmin = await UserAdmin.login(email, password);
 
-        // Ensure user exists and has a _doc property
-        if (!user || !user._doc) {
+        // Ensure userAdmin exists and has a _doc property
+        if (!userAdmin || !userAdmin._doc) {
             return res.status(500).json({ error: "Login failed, please try again." });
         }
 
-        // Generate JWT 
+        // // Generate JWT with useradmin ID and role. 
         const accessToken = jwt.sign(
-            { id: user._id }, 
+            { id: userAdmin._id, role: userAdmin.role }, 
             process.env.JWT_SECRET_KEY,
             { expiresIn: "14d" } // Token expires in 14days
         );
 
 
-        // Destructure user object and omit 'password' field
-        const { password: hashedPassword, ...userDataWithoutPassword } = user._doc;
+        // Destructure userAdmin object and omit 'password' field
+        const { password, ...userAdminDataWithoutPassword } = userAdmin._doc;
 
         // Send token in HTTP-only cookie for better security
         res.cookie("accessToken", accessToken, {
@@ -66,7 +65,7 @@ router.post("/login", async (req, res) => {
         }); 
 
         // Send user data in response (excluding password)
-        res.status(200).json(userDataWithoutPassword);
+        res.status(200).json(userAdminDataWithoutPassword);
     } catch (error) {
         if (error.message.includes("Incorrect username...") || error.message.includes("Incorrect password...")) {
             return res.status(401).json({ error: error.message }); // Unauthorized
@@ -77,8 +76,9 @@ router.post("/login", async (req, res) => {
 
 
 
+
 // LOGOUT
-router.post("/logout", (req, res) => {
+router.post("/admin/logout", (req, res) => {
     res.cookie("accessToken", "", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production", 

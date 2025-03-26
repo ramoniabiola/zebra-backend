@@ -24,7 +24,7 @@ const UserSchema = new mongoose.Schema(
 );
 
 
-//STATIC "sign-up" METHOD
+//STATIC "sign-up" METHOD 
 UserSchema.statics.signup = async function(password, userData) {
 
     // Validation
@@ -37,8 +37,9 @@ UserSchema.statics.signup = async function(password, userData) {
     }
 
     // Check if email already exists
-    const exists = await this.findOne({ email: userData.email });
-    if (exists) {
+    const existingUser = await this.findOne({ email: userData.email });
+    
+    if (existingUser) {
         throw new Error('Email already in use...');
     }
 

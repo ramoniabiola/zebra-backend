@@ -3,6 +3,7 @@ import cors from "cors"
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import http from "http";
+import cookieParser from "cookie-parser";
 
 
 // instantiate dotenv
@@ -10,6 +11,9 @@ dotenv.config();
 
 // Start Express.js
 const app = express();
+
+// Enable cookie parsing
+app.use(cookieParser());
 
 // Server Creation
 const server = http.createServer(app)
