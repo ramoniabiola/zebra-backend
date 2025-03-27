@@ -14,7 +14,7 @@
                 }
 
                 // Check if the user has superadmin or moderator role
-                if (decoded.role !== "moderator" && decoded.role !== "superadmin"){
+                if (!["moderator", "superadmin"].includes(decoded.role)){
                     return res.status(403).json({ error: "Forbidden: You do not have the required permissions." });
                 }
 

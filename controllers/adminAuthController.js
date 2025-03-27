@@ -1,7 +1,7 @@
 import { Router } from "express";
-import UserAdmin from "../models/UserAdmin";
+import UserAdmin from "../models/UserAdmin.js";
 import jwt from "jsonwebtoken"
-import verifySuperAdminToken from "../middlewares/verifySuperAdminToken";
+import verifySuperAdminToken from "../middlewares/verifySuperAdminToken.js";
 
 const router = Router();
 
@@ -21,7 +21,7 @@ router.post("/admin/register", verifySuperAdminToken, async (req, res) => {
         const newAdmin = await UserAdmin.signup(password, { name, email, role });
 
         // Respond with success message
-        res.status(201).json({ message: "Admin created successfully", admin: newAdmin });
+        res.status(201).json({ admin: newAdmin });
 
     }catch(error) {
         // If an error occurs during signup, send an error response
@@ -31,14 +31,13 @@ router.post("/admin/register", verifySuperAdminToken, async (req, res) => {
 
 
 
-
 // LOGIN
 router.post("/admin/login", async (req, res) => {
     const { email, password } = req.body;
 
     try {  
         
-         const userAdmin = await UserAdmin.login(email, password);
+        const userAdmin = await UserAdmin.login(email, password);
 
         // Ensure userAdmin exists and has a _doc property
         if (!userAdmin || !userAdmin._doc) {
@@ -88,3 +87,6 @@ router.post("/admin/logout", (req, res) => {
 
     res.status(200).json({ message: "Logged out successfully..." });
 });
+
+
+export default router;

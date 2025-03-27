@@ -1,5 +1,5 @@
 import { Router } from "express";
-import User from "../models/User";
+import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
 const router = Router();
@@ -46,9 +46,9 @@ router.post("/login", async (req, res) => {
             return res.status(500).json({ error: "Login failed, please try again." });
         }
 
-        // Generate JWT 
+        // Generate JWT with User ID and Role
         const accessToken = jwt.sign(
-            { id: user._id }, 
+            { id: user._id, role: user.role }, 
             process.env.JWT_SECRET_KEY,
             { expiresIn: "14d" } // Token expires in 14days
         );
@@ -88,3 +88,6 @@ router.post("/logout", (req, res) => {
 
     res.status(200).json({ message: "Logged out successfully..." });
 });
+
+
+export default router;
