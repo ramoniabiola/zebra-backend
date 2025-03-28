@@ -9,22 +9,28 @@ const router = Router();
 
 // CREATE AN APARTMENT LISTING (Only for Landlords & Agents)
 router.post("/create", verifyUserToken, async (req, res) => {
-   
     try {
+        const { images } = req.body;
+
+        // Ensure images do not exceed 10
+        if (images && images.length > 10) {
+            return res.status(400).json({ error: "You can upload a maximum of 10 images." });
+        }
+
         // Create new apartment listing
         const newListing = new Apartment({
             ...req.body,
-            createdBy: req.user.id  // Attach user ID from token
+            createdBy: req.user.id // Attach user ID from token
         });
 
         // Save the new apartment to the database
         const savedListing = await newListing.save();
-       
+
         // Return the saved apartment
-        res.status(201).json(savedListing); 
+        res.status(201).json(savedListing);
     } catch (err) {
         res.status(500).json({ error: "Failed to create apartment listing", message: err.message });
-    }   
+    }
 });
 
 
@@ -96,7 +102,7 @@ router.delete("/admin/delete/:id", verifyAdminToken, async (req, res) => {
 
         await Apartment.findByIdAndDelete(req.params.id);
 
-        // Log Admin Deletion with Timestamp
+        // Log Admin Apartment listing Deletion with Timestamp
         const timestamp = moment().format("YYYY-MM-DD HH:mm:ss");
         console.log(`[${timestamp}]: Admin-(${req.user.id}) deleted listing ${req.params.id}`);
 
@@ -159,6 +165,7 @@ router.get("/", async (req, res) => {
 });
 
 
+
 // GET APARTMENT LISTINGS(search query) BASED ON (LOCATION & APARTMENT TYPE)
 router.get("/search", async (req, res) => {
     try {
@@ -174,7 +181,7 @@ router.get("/search", async (req, res) => {
 
         // Filter by apartment type
         if (apartment_type) {
-            query.apartment_type = apartment_type;;
+            query.apartment_type = apartment_type;
         }
 
         // Calculate pagination
@@ -194,6 +201,7 @@ router.get("/search", async (req, res) => {
     }
 });
  
+
 
 
 export default router;
