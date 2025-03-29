@@ -1,8 +1,11 @@
 import { Router } from "express";
 import Apartment from "../models/Apartment.js";
-import verifyUserToken from "../middlewares/verifyUserToken.js"
-import verifyAdminToken from "../middlewares/verifyAdminToken.js"
+import verifyUserToken from "../middlewares/verifyUserToken.js";
+import verifyAdminToken from "../middlewares/verifyAdminToken.js";
 import moment from "moment"; 
+import ViewLog from "../models/ViewLog.js"; 
+import { getClientIp } from "request-ip"; // To get user IP address
+
 
 const router = Router();
 
@@ -201,6 +204,48 @@ router.get("/search", async (req, res) => {
     }
 });
  
+
+
+
+// RECORD THE NUMBER OF USERS(potential tenants) THAT VIEWED AN APARTMENT LISTING
+
+router.put("/view/:apartmentId", async (req, res) => {
+    try {
+        const { apartmentId } = req.params;
+        const userId = req.user?.id || null; // Get user ID if logged in, else null
+        const userIp = getClientIp(req) || req.headers["x-forwarded-for"] || req.socket.remoteAddress; // Get user's IP address
+
+        // Check if this user or IP has already viewed this listing in the last 24 hours
+        const existingView = await ViewLog.findOne({
+            apartmentId,
+            $or: [{ userId }, { userIp }],
+            createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Last 24 hours
+        });
+
+        if (existingView) {
+            return res.status(200).json({ message: "View already recorded within the last 24 hours." });
+        }
+
+        // Increment view count in Apartment model
+        const updatedApartment = await Apartment.findByIdAndUpdate(
+            apartmentId, 
+            { $inc: { views: 1 } }, 
+            { new: true }
+        );
+
+        // Log the view in the ViewLog model
+        await ViewLog.create({
+            apartmentId,
+            userId,
+            userIp
+        });
+
+        res.status(200).json({ message: "Apartment view count updated.", updatedApartment });
+    } catch (err) {
+        console.error("Error updating apartment views:", err);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
 
 
 

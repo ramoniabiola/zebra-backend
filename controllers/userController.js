@@ -10,7 +10,7 @@ const router = Router();
 
 
 // UPDATE USER
-router.put("/:id", verifyUserToken, async (req, res) => {
+router.put("/:id", verifyGeneralUserToken, async (req, res) => {
     try {
         // the logged-in user can only update their own info
         if (req.user.id !== req.params.id) {
@@ -100,7 +100,7 @@ router.delete("/admin/delete/:id", verifyAdminToken, async (req, res) => {
         const timestamp = moment().format("YYYY-MM-DD HH:mm:ss");
         console.log(`[${timestamp}]: Admin-(${req.user.id}) deleted User-${req.params.id}`);
 
-        res.status(200).json({ message: "User has been successfully deleted by an admin." });
+        res.status(200).json({ message: "User has been successfully deactivated..." });
     } catch (err) {
         console.error("Error deleting user:", err);
         res.status(500).json({ error: "Internal server error" });
