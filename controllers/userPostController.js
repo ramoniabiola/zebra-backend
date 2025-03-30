@@ -52,8 +52,7 @@ router.get("/user/:userId", verifyUserToken, async (req, res) => {
 
 
 
-
-//GET A USER SPECIFIC APARTMENT-LISTING WITHIN THEIR OWN POSTED APARTMENTS
+//SEARCH A SPECIFIC USER APARTMENT-LISTING WITHIN THEIR OWN POSTED APARTMENTS
 
 router.get("/user/:userId/apartment/search", verifyUserToken, async (req, res) => {
     try {
@@ -97,6 +96,8 @@ router.get("/user/:userId/apartment/search", verifyUserToken, async (req, res) =
 });
 
 
+
+
 // GET TOTAL COUNT OF USER'S APARTMENT LISTINGS
 
 router.get("/count", verifyUserToken, async (req, res) => {
@@ -110,6 +111,7 @@ router.get("/count", verifyUserToken, async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 });
+
 
 
 // UPDATE AN APARTMENT LISTING POSTED BY THE USER
@@ -139,6 +141,8 @@ router.put("/update/:apartmentId", verifyUserToken, async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 });
+
+
 
 
 
@@ -172,6 +176,8 @@ router.put("/deactivate/:apartmentId", verifyUserToken, async (req, res) => {
 
 
 
+
+
 // REACTIVATE AN APARTMENT LISTING
 
 router.put("/reactivate/:apartmentId", verifyUserToken, async (req, res) => {
@@ -200,6 +206,8 @@ router.put("/reactivate/:apartmentId", verifyUserToken, async (req, res) => {
 });
 
 
+
+
 // GET ALL DEACTIVATED APARTMENT LISTINGS 
 
 router.get("/deactivated", verifyUserToken, async (req, res) => {
@@ -215,13 +223,6 @@ router.get("/deactivated", verifyUserToken, async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 });
-    
-
-
-
-
-
-
 
 
 

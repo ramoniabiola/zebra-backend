@@ -33,5 +33,4 @@ const ApartmentSchema = new mongoose.Schema(
  
 
 
-
 export default mongoose.model("Apartment", ApartmentSchema);

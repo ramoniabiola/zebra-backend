@@ -5,7 +5,7 @@ const UserBookmarkSchema = new mongoose.Schema(
         userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
         apartment_listings: [
             {
-                productId: { type: mongoose.Schema.Types.ObjectId, ref: "Apartment", required: true },
+                apartmentId: { type: mongoose.Schema.Types.ObjectId, ref: "Apartment", required: true },
             }
         ],
     },

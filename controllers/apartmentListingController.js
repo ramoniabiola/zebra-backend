@@ -249,4 +249,5 @@ router.put("/view/:apartmentId", async (req, res) => {
 
 
 
+
 export default router;
