@@ -48,6 +48,7 @@ router.post("/", verifyTenantToken, async (req, res) => {
 });
 
 
+
 // GET ALL USER BOOKMARKS (Tenant)
 router.get("/", verifyTenantToken, async (req, res) => {
     try {
@@ -69,7 +70,7 @@ router.get("/", verifyTenantToken, async (req, res) => {
         if (!userBookmark || userBookmark.apartment_listings.length === 0) {
             return res.status(404).json({ error: "No bookmarked apartments found." });
         }
-
+ 
         // Paginate bookmarks
         const startIndex = (page - 1) * limit;
         const endIndex = startIndex + parseInt(limit);
@@ -120,36 +121,40 @@ router.delete("/:apartmentId", verifyTenantToken, async (req, res) => {
 
 
 
-// GET A SPECIFIC BOOKMARED APARTMENT WITHIN USER BOOKMARKED APARTMENT LISTINGS
+// GET A SPECIFIC BOOKMARKED APARTMENT WITHIN USER BOOKMARKED APARTMENT LISTINGS
 
 router.get("/search", verifyTenantToken, async (req, res) => {
     try {
         const userId = req.user.id;
         const { title, location, page = 1, limit = 10 } = req.query;
 
+        // Ensure at least one search parameter is provided
         if (!title && !location) {
             return res.status(400).json({ error: "Please provide a title or location for search." });
         }
 
-        const pageNumber = parseInt(page, 10);
-        const pageSize = parseInt(limit, 10);
+        // Parse pagination values safely
+        const pageNumber = parseInt(page) || 1;
+        const pageSize = parseInt(limit) || 10;
         const skip = (pageNumber - 1) * pageSize;
 
-        // Find the user's bookmarked listings and populate apartment details
+        // Find the user's bookmarked apartments
         const userBookmark = await UserBookmark.findOne({ userId })
-            .populate({
-                path: "apartment_listings.apartmentId",
-                options: { sort: { createdAt: -1 } } // Sort by newest apartments first
-            })
-            .lean();
+        .populate({
+            path: "apartment_listings.apartmentId", 
+            options: { sort: { createdAt: -1 } }, // Sort by newest
+        })
+        .lean();
 
+        // If no bookmarks found
         if (!userBookmark || userBookmark.apartment_listings.length === 0) {
             return res.status(404).json({ error: "No bookmarked apartments found." });
         }
 
-        // Filter apartments based on search query
-        let filteredListings = userBookmark.apartment_listings;
+        // Remove bookmarks pointing to deleted apartments
+        let filteredListings = userBookmark.apartment_listings.filter(apartment => apartment.apartmentId);
 
+        // Apply search filters
         if (title) {
             filteredListings = filteredListings.filter(apartment =>
                 apartment.apartmentId.title.toLowerCase().includes(title.toLowerCase())
@@ -162,6 +167,7 @@ router.get("/search", verifyTenantToken, async (req, res) => {
             );
         }
 
+        // If no results match the search
         if (filteredListings.length === 0) {
             return res.status(404).json({ error: "No matching bookmarked apartments found." });
         }
@@ -169,17 +175,21 @@ router.get("/search", verifyTenantToken, async (req, res) => {
         // Apply pagination
         const paginatedListings = filteredListings.slice(skip, skip + pageSize);
 
+        // Return results
         res.status(200).json({
             totalResults: filteredListings.length,
             currentPage: pageNumber,
             totalPages: Math.ceil(filteredListings.length / pageSize),
             listings: paginatedListings,
         });
+
     } catch (err) {
         console.error("Error fetching bookmarked apartments:", err);
         res.status(500).json({ error: "Internal server error" });
     }
 });
+
+
 
 
 
