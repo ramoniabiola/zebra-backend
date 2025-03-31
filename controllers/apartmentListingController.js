@@ -1,7 +1,10 @@
 import { Router } from "express";
 import Apartment from "../models/Apartment.js";
+import ReportLog from "../models/ReportLog.js";
 import verifyUserToken from "../middlewares/verifyUserToken.js";
 import verifyAdminToken from "../middlewares/verifyAdminToken.js";
+import verifyTenantToken from "../middlewares/verifyTenantToken.js";
+import logAdminAction from "../middlewares/logAdminAction.js";
 import moment from "moment"; 
 import ViewLog from "../models/ViewLog.js"; 
 import { getClientIp } from "request-ip"; // To get user IP address
@@ -97,17 +100,21 @@ router.delete("/delete/:id", verifyUserToken, async (req, res) => {
 // Admin-only Delete Route
 router.delete("/admin/delete/:id", verifyAdminToken, async (req, res) => {
     try {
-        const listing = await Apartment.findById(req.params.id);
+
+        const adminId = req.user.id;  // Authenticated admin performing the action
+        const { id } = req.params;
+
+        const listing = await Apartment.findById(id);
 
         if (!listing) {
             return res.status(404).json({ error: "Apartment not found." });
         }
 
-        await Apartment.findByIdAndDelete(req.params.id);
+        await Apartment.findByIdAndDelete(id);
 
         // Log Admin Apartment listing Deletion with Timestamp
         const timestamp = moment().format("YYYY-MM-DD HH:mm:ss");
-        console.log(`[${timestamp}]: Admin-(${req.user.id}) deleted listing ${req.params.id}`);
+        await logAdminAction(adminId, `[${timestamp}]: Deleted Apartment listing-${listing.title}`, listing.id);
 
         res.status(200).json({ message: "Apartment listing has been deleted by an admin." });
     } catch (err) {
@@ -140,7 +147,7 @@ router.get("/find/:id", async (req, res) => {
 
 
 
-// GET ALL APARTMENT LISTINGS(paginated approach  to apartment listings)
+// GET ALL APARTMENT LISTINGS(paginated approach to apartment listings)
 router.get("/", async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1; // Default to page 1
@@ -243,6 +250,52 @@ router.put("/view/:apartmentId", async (req, res) => {
         res.status(200).json({ message: "Apartment view count updated.", updatedApartment });
     } catch (err) {
         console.error("Error updating apartment views:", err);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+
+
+
+// REPORT AN APARTMENT LISTING
+router.post("/report/:id", verifyTenantToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { reason } = req.body;
+        const userId = req.user.id;
+
+        if (!reason) {
+            return res.status(400).json({ error: "Please provide a reason for reporting." });
+        }
+
+        // Check if apartment exists
+        const apartment = await Apartment.findById(id);
+        if (!apartment) {
+            return res.status(404).json({ error: "Apartment not found." });
+        }
+
+        // Check if user has already reported this apartment
+        const existingReport = await ReportLog.findOne({ apartmentId: id, reportedBy: userId });
+        if (existingReport) {
+            return res.status(400).json({ error: "You have already reported this apartment." });
+        }
+
+        // Create a new report
+        const newReport = new ReportLog({
+            apartmentId: id,
+            reportedBy: userId,
+            reason,
+        });
+
+        await newReport.save();
+
+        // Update apartment report count
+        apartment.reportCount += 1;
+        await apartment.save();
+
+        res.status(201).json({ message: "Apartment reported successfully.", report: newReport });
+    } catch (err) {
+        console.error("Error reporting apartment:", err);
         res.status(500).json({ error: "Internal server error" });
     }
 });

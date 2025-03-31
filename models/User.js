@@ -18,7 +18,8 @@ const UserSchema = new mongoose.Schema(
         role: { type: String, enum: ["tenant", "landlord", "agent"], required: true },
         verified: { type: Boolean, default: false },
         account_status: { type: String, enum: ["active", "banned", "pending"], default: "active" },
-        preferred_locations: [{ type: String }]
+        preferred_locations: [{ type: String }],
+        isSuspended: { type: Boolean, default: false },
     },
     { timestamps: true }
 );

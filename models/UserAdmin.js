@@ -15,11 +15,13 @@ const UserAdminSchema = new mongoose.Schema({
 
 
 //STATIC METHOD TO "sign-up" Admin 
-UserAdminSchema.statics.signup = async function(password, userAdminData) {
+UserAdminSchema.statics.signup = async function(userAdminData) {
+
+    const { email, password, name } = userAdminData; // Extract password from userAdminData
 
     try {
         // Validation
-        if (!validator.isEmail(userAdminData.email)) {
+        if (!validator.isEmail(email)) {
             throw new Error('Invalid email!, please provide a valid email....');
         }
 
@@ -30,7 +32,7 @@ UserAdminSchema.statics.signup = async function(password, userAdminData) {
 
         // Check if email or name already exists
         const existingUser = await this.findOne({
-            $or: [{ email: userAdminData.email }, { name: userAdminData.name }]
+            $or: [{ email }, { name }]  
         });
 
         if (existingUser) {

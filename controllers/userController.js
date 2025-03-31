@@ -1,6 +1,5 @@
 import { Router } from "express";
 import User from "../models/User.js";
-import verifyUserToken from "../middlewares/verifyUserToken.js"
 import verifyAdminToken from "../middlewares/verifyAdminToken.js"
 import verifyGeneralUserToken from "../middlewares/verifyGeneralUserToken.js"
 import moment from "moment";

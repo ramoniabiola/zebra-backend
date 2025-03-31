@@ -27,6 +27,7 @@ const ApartmentSchema = new mongoose.Schema(
         service_charge: { type: Number, default: 0 },
         views: { type: Number, default: 0 },
         verified_listing: { type: Boolean, default: false },
+        reportCount: { type: Number, default: 0 }, 
     },
     { timestamps: true }
 );

@@ -39,8 +39,8 @@ router.post("/admin/login", async (req, res) => {
         
         const userAdmin = await UserAdmin.login(email, password);
 
-        // Ensure userAdmin exists and has a _doc property
-        if (!userAdmin || !userAdmin._doc) {
+        // Ensure userAdmin exists 
+        if (!userAdmin) {
             return res.status(500).json({ error: "Login failed, please try again." });
         }
 
@@ -66,7 +66,7 @@ router.post("/admin/login", async (req, res) => {
         // Send user data in response (excluding password)
         res.status(200).json(userAdminDataWithoutPassword);
     } catch (error) {
-        if (error.message.includes("Incorrect username...") || error.message.includes("Incorrect password...")) {
+        if (error.message.includes("Incorrect email...") || error.message.includes("Incorrect password...")) {
             return res.status(401).json({ error: error.message }); // Unauthorized
         }
         res.status(500).json({ error: "Internal server error" });
