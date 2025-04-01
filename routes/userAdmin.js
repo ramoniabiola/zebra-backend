@@ -79,7 +79,7 @@ router.get("/users", verifySuperAdminToken, async (req, res) => {
 
 
 // GET A SPECIFIC ADMIN PROFILE
-router.get("/users/:id", verifyAdminToken, async (req, res) => {
+router.get("/user/:id", verifyAdminToken, async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -104,7 +104,7 @@ router.get("/users/:id", verifyAdminToken, async (req, res) => {
 
 
 // DELETE AN ADMIN (superadmin only)
-router.delete("/users/:id", verifySuperAdminToken, async (req, res) => {
+router.delete("/user/:id", verifySuperAdminToken, async (req, res) => {
     try {
         const { id } = req.params;
         const adminId = req.user.id;  // Authenticated superadmin performing the action
@@ -117,7 +117,7 @@ router.delete("/users/:id", verifySuperAdminToken, async (req, res) => {
 
         // Log the action 
         const timestamp = moment().format("YYYY-MM-DD HH:mm:ss");
-        await logAdminAction(adminId, `[${timestamp}]: Deleted ${deletedAdmin.role}-${deletedAdmin.name}'s Account`, id);
+        await logAdminAction(adminId, `[${timestamp}]: ${adminId} deleted ${deletedAdmin.role}-${deletedAdmin.name}'s Account`, id);
 
         res.status(200).json({ message: "Admin deleted successfully" });
     } catch (err) {
@@ -131,7 +131,7 @@ router.delete("/users/:id", verifySuperAdminToken, async (req, res) => {
 
 // UPDATE AN ADMIN ROLE(superadmin only)
 
-router.patch("/users/:id/role", verifySuperAdminToken, async (req, res) => {
+router.patch("/user/role/:id", verifySuperAdminToken, async (req, res) => {
     try {
         const { id } = req.params;
         const { role } = req.body;
@@ -150,7 +150,7 @@ router.patch("/users/:id/role", verifySuperAdminToken, async (req, res) => {
 
         // Log the action
         const timestamp = moment().format("YYYY-MM-DD HH:mm:ss");
-        await logAdminAction(adminId, `[${timestamp}]: Changed ${updatedAdmin.role}-${updatedAdmin.name}'s Role`, id);
+        await logAdminAction(adminId, `[${timestamp}]: ${adminId} changed ${updatedAdmin.role}-${updatedAdmin.name}'s Role`, id);
 
         res.status(200).json(updatedAdmin);
     } catch (err) {
@@ -237,7 +237,7 @@ router.patch("/resolve-report/:reportId", verifyAdminToken, async (req, res) => 
 
 // SUSPEND A USER (landlord, agent or tenant)
 
-router.patch("/users/:id/suspend", verifyAdminToken, async (req, res) => {
+router.patch("/user/suspend/:id", verifyAdminToken, async (req, res) => {
     try {
         const { id } = req.params;
         const { isSuspended } = req.body;
@@ -251,7 +251,7 @@ router.patch("/users/:id/suspend", verifyAdminToken, async (req, res) => {
 
         // Log the action
         const timestamp = moment().format("YYYY-MM-DD HH:mm:ss");
-        await logAdminAction(adminId, `[${timestamp}]: Suspended ${updatedUser.role}-${updatedUser.username}'s Account`, id, req.ip);
+        await logAdminAction(adminId, `[${timestamp}]: ${adminId} suspended ${updatedUser.role}-${updatedUser.username}'s Account`, id, req.ip);
 
         res.status(200).json({ message: `User ${isSuspended ? "suspended" : "unsuspended"} successfully.` });
     } catch (err) {

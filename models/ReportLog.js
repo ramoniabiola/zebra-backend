@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+
 const ReportLogSchema = new mongoose.Schema(
     {
         apartmentId: { type: mongoose.Schema.Types.ObjectId, ref: "Apartment", required: true },

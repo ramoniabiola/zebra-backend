@@ -7,7 +7,7 @@ const router = Router();
 
 
 // USER-ADMIN REGISTRATION(Only superadmin can create a new admin)
-router.post("/admin/register", verifySuperAdminToken, async (req, res) => {
+router.post("/register", verifySuperAdminToken, async (req, res) => {
     const { name, email, password, role } = req.body;
 
     try {
@@ -18,7 +18,7 @@ router.post("/admin/register", verifySuperAdminToken, async (req, res) => {
         }
 
         //Call the signup method from the UserAdmin model
-        const newAdmin = await UserAdmin.signup(password, { name, email, role });
+        const newAdmin = await UserAdmin.signup({ name, email, password, role });
 
         // Respond with success message
         res.status(201).json({ admin: newAdmin });
@@ -32,17 +32,23 @@ router.post("/admin/register", verifySuperAdminToken, async (req, res) => {
 
 
 // LOGIN
-router.post("/admin/login", async (req, res) => {
+router.post("/login", async (req, res) => {
     const { email, password } = req.body;
-
+ 
     try {  
-        
+
         const userAdmin = await UserAdmin.login(email, password);
 
         // Ensure userAdmin exists 
         if (!userAdmin) {
             return res.status(500).json({ error: "Login failed, please try again." });
         }
+
+        
+        // Convert Mongoose document to a plain object
+        const userAdminDataWithoutPassword = userAdmin.toObject();
+        delete userAdminDataWithoutPassword.password;  // Remove password field
+
 
         // // Generate JWT with useradmin ID and role. 
         const accessToken = jwt.sign(
@@ -51,9 +57,6 @@ router.post("/admin/login", async (req, res) => {
             { expiresIn: "14d" } // Token expires in 14days
         );
 
-
-        // Destructure userAdmin object and omit 'password' field
-        const { password, ...userAdminDataWithoutPassword } = userAdmin._doc;
 
         // Send token in HTTP-only cookie for better security
         res.cookie("accessToken", accessToken, {
@@ -69,14 +72,15 @@ router.post("/admin/login", async (req, res) => {
         if (error.message.includes("Incorrect email...") || error.message.includes("Incorrect password...")) {
             return res.status(401).json({ error: error.message }); // Unauthorized
         }
-        res.status(500).json({ error: "Internal server error" });
+        
+        res.status(500).json({ error: error.message });
     }         
 }); 
 
 
 
 // LOGOUT
-router.post("/admin/logout", (req, res) => {
+router.post("/logout", (req, res) => {
     res.cookie("accessToken", "", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production", 

@@ -1,10 +1,19 @@
+//  Libraries / Dependencies
 import express from "express";
 import cors from "cors"
-import mongoose from "mongoose";
+import mongoose from "mongoose"; 
 import dotenv from "dotenv";
 import http from "http";
 import cookieParser from "cookie-parser";
 
+// Routes
+import adminAuthRoute from "./routes/adminAuth.js";
+import userAdminRoute from "./routes/userAdmin.js";
+import userAuthRoute from "./routes/userAuth.js";
+import userRoute from "./routes/user.js";
+import apartmentListingRoute from "./routes/apartmentListing.js";
+import userBookmarkRoute from "./routes/userBookmark.js";
+import userPostRoute from "./routes/userPost.js";
 
 // instantiate dotenv
 dotenv.config();
@@ -31,6 +40,14 @@ mongoose.connect(process.env.MONGO_URL, {
 
 
 app.use(express.json());
+app.use("/api/admin/auth", adminAuthRoute)
+app.use("/api/admin", userAdminRoute)
+app.use("/api/user/auth", userAuthRoute)
+app.use("/api/user", userRoute)
+app.use("/api/apartment-listing", apartmentListingRoute)
+app.use("/api/bookmark", userBookmarkRoute)
+app.use("/api/user-post", userPostRoute)
+
 
 
 // Server listening port

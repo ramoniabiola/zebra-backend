@@ -1,4 +1,4 @@
-import AdminLog from "../models/AdminLog"; 
+import AdminLog from "../models/AdminLog.js"; 
 
 
 const logAdminAction = async (adminId, action, target, ipAddress) => {

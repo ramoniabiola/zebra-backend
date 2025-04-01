@@ -57,6 +57,7 @@ UserAdminSchema.statics.signup = async function(userAdminData) {
 
 //STATIC METHOD TO "login" Admin
 UserAdminSchema.statics.login = async function(email, password) {
+    
     try {
         if (!email || !password) {
             throw Error('All fields must be filled...');

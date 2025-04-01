@@ -114,7 +114,7 @@ router.delete("/admin/delete/:id", verifyAdminToken, async (req, res) => {
 
         // Log Admin Apartment listing Deletion with Timestamp
         const timestamp = moment().format("YYYY-MM-DD HH:mm:ss");
-        await logAdminAction(adminId, `[${timestamp}]: Deleted Apartment listing-${listing.title}`, listing.id);
+        await logAdminAction(adminId, `[${timestamp}]: ${adminId} deleted Apartment listing-${listing.title}`, listing.id);
 
         res.status(200).json({ message: "Apartment listing has been deleted by an admin." });
     } catch (err) {

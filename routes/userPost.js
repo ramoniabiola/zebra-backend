@@ -7,7 +7,7 @@ const router = Router();
 
 // GET ALL USER APARTMENT-LISTING POSTED
 
-router.get("/user/:userId", verifyUserToken, async (req, res) => {
+router.get("/:userId", verifyUserToken, async (req, res) => {
     try {
         const { userId } = req.params;
         const { page = 1, limit = 10 } = req.query; // Default page = 1, limit = 10
@@ -54,7 +54,7 @@ router.get("/user/:userId", verifyUserToken, async (req, res) => {
 
 //SEARCH A SPECIFIC USER APARTMENT-LISTING WITHIN THEIR OWN POSTED APARTMENTS
 
-router.get("/user/:userId/apartment/search", verifyUserToken, async (req, res) => {
+router.get("/:userId/search", verifyUserToken, async (req, res) => {
     try {
         const { userId } = req.params;
         const { query } = req.query; // Get search query from request
@@ -67,7 +67,7 @@ router.get("/user/:userId/apartment/search", verifyUserToken, async (req, res) =
         // Construct a case-insensitive search query
         const searchQuery = {
             userId,
-            $or: [
+            $or: [ 
                 { "apartment_listings.ApartmentId.title": { $regex: new RegExp(query, "i") } },
                 { "apartment_listings.ApartmentId.apartment_address": { $regex: new RegExp(query, "i") } }
             ]
