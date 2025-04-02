@@ -18,8 +18,10 @@ import userPostRoute from "./routes/userPost.js";
 // instantiate dotenv
 dotenv.config();
 
+
 // Start Express.js
 const app = express();
+
 
 // Enable cookie parsing
 app.use(cookieParser());
@@ -39,7 +41,11 @@ mongoose.connect(process.env.MONGO_URL, {
 .catch((err) => console.error("Database connection error:", err));
 
 
+// USE EXPRESS.JSON MIDDLEWARE
 app.use(express.json());
+
+
+// API ROUTES
 app.use("/api/admin/auth", adminAuthRoute)
 app.use("/api/admin", userAdminRoute)
 app.use("/api/user/auth", userAuthRoute)
@@ -53,4 +59,4 @@ app.use("/api/user-post", userPostRoute)
 // Server listening port
 server.listen(process.env.PORT, () => {
     console.log(`Backend server is running...`)
-});
+}); 

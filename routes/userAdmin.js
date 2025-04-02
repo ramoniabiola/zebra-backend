@@ -56,7 +56,7 @@ router.put("/update", verifyAdminToken, async (req, res) => {
         res.status(200).json({ message: "Admin account updated successfully.", admin: adminData });
     } catch (error) {
         console.error("Error updating admin account:", error);
-        res.status(500).json({ error: "Internal server error." });
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -96,7 +96,7 @@ router.get("/user/:id", verifyAdminToken, async (req, res) => {
         res.status(200).json(admin);
     } catch (err) {
         console.error("Error fetching admin:", err);
-        res.status(500).json({ error: "Internal server error" });
+        res.status(500).json({ error: error.message });
     }
 });
 
