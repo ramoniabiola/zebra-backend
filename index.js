@@ -50,8 +50,8 @@ app.use("/api/admin/auth", adminAuthRoute)
 app.use("/api/admin", userAdminRoute)
 app.use("/api/user/auth", userAuthRoute)
 app.use("/api/user", userRoute)
-app.use("/api/apartment-listing", apartmentListingRoute)
-app.use("/api/bookmark", userBookmarkRoute)
+app.use("/api/apartments", apartmentListingRoute)
+app.use("/api/bookmarks", userBookmarkRoute)
 app.use("/api/user-post", userPostRoute)
 
 

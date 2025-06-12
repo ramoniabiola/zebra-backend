@@ -7,7 +7,7 @@ const router = Router();
 
 // GET ALL USER APARTMENT-LISTING POSTED
 
-router.get("/:userId", verifyUserToken, async (req, res) => {
+router.get("/", verifyUserToken, async (req, res) => {
     try {
         const { userId } = req.params;
         const { page = 1, limit = 10 } = req.query; // Default page = 1, limit = 10
@@ -54,7 +54,7 @@ router.get("/:userId", verifyUserToken, async (req, res) => {
 
 //SEARCH A SPECIFIC USER APARTMENT-LISTING WITHIN THEIR OWN POSTED APARTMENTS
 
-router.get("/:userId/search", verifyUserToken, async (req, res) => {
+router.get("/search", verifyUserToken, async (req, res) => {
     try {
         const { userId } = req.params;
         const { query } = req.query; // Get search query from request
@@ -179,7 +179,6 @@ router.put("/deactivate/:apartmentId", verifyUserToken, async (req, res) => {
 
 
 // REACTIVATE AN APARTMENT LISTING
-
 router.put("/reactivate/:apartmentId", verifyUserToken, async (req, res) => {
     try {
         const userPost = await UserPost.findOne({ 
@@ -208,21 +207,58 @@ router.put("/reactivate/:apartmentId", verifyUserToken, async (req, res) => {
 
 
 
-// GET ALL DEACTIVATED APARTMENT LISTINGS 
-
+// GET ALL USER (Agent / Landlord) DEACTIVATED APARTMENT LISTINGS
 router.get("/deactivated", verifyUserToken, async (req, res) => {
     try {
-        const userApartments = await Apartment.find({ 
-            createdBy: req.user.id, 
-            isAvailable: false 
-        }).sort({ createdAt: -1 });
+        const page = parseInt(req.query.page) || 1; // Default to page 1
+        const limit = parseInt(req.query.limit) || 10; // Default limit to 10
+        const skip = (page - 1) * limit;
+        
+        const filter = { createdBy: req.user.id, isAvailable: false };
+        
+        const total = await Apartment.countDocuments(filter);
+        
+        const userDeactivatedListings = await Apartment.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
 
-        res.status(200).json(userApartments);
+        res.status(200).json({
+            userDeactivatedListings,
+            total,
+            hasMore: skip + userDeactivatedListings.length < total,
+        });
     } catch (err) {
-        console.error("Error fetching deactivated apartments:", err);
+      console.error("Error fetching deactivated apartments:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+
+
+
+// GET a specific deactivated listing by ID (for the logged-in agent/landlord)
+router.get("/deactivated/find/:id", verifyUserToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const deactivatedListing = await Apartment.findOne({
+            _id: id,
+            createdBy: req.user.id,
+            isAvailable: false,
+        });
+
+      if (!deactivatedListing) {
+        return res.status(404).json({ error: "Deactivated listing not found or unauthorized" });
+      }
+
+      res.status(200).json(deactivatedListing);
+    } catch (err) {
+        console.error("Error fetching deactivated listing:", err);
         res.status(500).json({ error: "Internal server error" });
     }
 });
+
 
 
 

@@ -8,9 +8,40 @@ import logAdminAction from "../middlewares/logAdminAction.js";
 import moment from "moment"; 
 import ViewLog from "../models/ViewLog.js"; 
 import { getClientIp } from "request-ip"; // To get user IP address
+import multer from "multer";
+import cloudinary from "../config/cloudinary.js";
 
 
 const router = Router();
+
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+
+
+// APARTMENT IMAGES UPLOAD
+router.post("/upload", upload.array("images"), async (req, res) => {
+  try {
+    const uploadedImages = [];
+
+    for (const file of req.files) {
+      const result = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream({ resource_type: "image" }, (err, result) => {
+          if (err) return reject(err);
+          resolve(result);
+        });
+        stream.end(file.buffer);
+      });
+      uploadedImages.push(result.secure_url);
+    }
+
+    res.json({ uploadedImages });
+  } catch (err) {
+    res.status(500).json({ error: "Image upload failed" });
+  }
+});
+
 
 
 // CREATE AN APARTMENT LISTING (Only for Landlords & Agents)
