@@ -30,7 +30,10 @@ app.use(cookieParser());
 const server = http.createServer(app)
 
 // Use cors middleware
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:5173", 
+  credentials: true, // Allow credentials (cookies, etc.)
+}));
 
 
 // Database Connection
