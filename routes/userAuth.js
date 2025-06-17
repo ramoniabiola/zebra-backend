@@ -35,11 +35,11 @@ router.post("/register", async (req, res) => {
 
 // LOGIN
 router.post("/login", async (req, res) => {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
     try {  
         
-        const user = await User.login(username, password);
+        const user = await User.login(email, password);
 
         // Ensure user exists and has a _doc property
         if (!user || !user._doc) {

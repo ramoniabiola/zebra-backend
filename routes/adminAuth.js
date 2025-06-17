@@ -50,7 +50,7 @@ router.post("/login", async (req, res) => {
         delete userAdminDataWithoutPassword.password;  // Remove password field
 
 
-        // // Generate JWT with useradmin ID and role. 
+        // Generate JWT with useradmin ID and role. 
         const accessToken = jwt.sign(
             { id: userAdmin._id, role: userAdmin.role }, 
             process.env.JWT_SECRET_KEY,

@@ -1,7 +1,5 @@
 import mongoose from "mongoose";
 
-
-
 const ApartmentSchema = new mongoose.Schema(
     {
         title: { type: String, required: true },
