@@ -2,7 +2,6 @@ import dotenv from 'dotenv';
 
 dotenv.config(); // Load env first
 
-
 // Libraries / Dependencies
 import express from "express";
 import cors from "cors"
@@ -22,7 +21,6 @@ import userPostRoute from "./routes/userPost.js";
 
 // Start Express.js
 const app = express();
-
 
 // Enable cookie parsing
 app.use(cookieParser());
@@ -62,7 +60,5 @@ app.use("/api/user-post", userPostRoute)
 
 // Server listening port
 server.listen(process.env.PORT, () => {
-    console.log(`Backend server is running...`)
+  console.log(`Backend server is running...`)
 }); 
-
-console.log('Cloud name:', process.env.CLOUDINARY_CLOUD_NAME); // should print your actual cloud name
