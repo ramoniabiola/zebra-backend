@@ -1,8 +1,12 @@
-//  Libraries / Dependencies
+import dotenv from 'dotenv';
+
+dotenv.config(); // Load env first
+
+
+// Libraries / Dependencies
 import express from "express";
 import cors from "cors"
 import mongoose from "mongoose"; 
-import dotenv from "dotenv";
 import http from "http";
 import cookieParser from "cookie-parser";
 
@@ -14,9 +18,6 @@ import userRoute from "./routes/user.js";
 import apartmentListingRoute from "./routes/apartmentListing.js";
 import userBookmarkRoute from "./routes/userBookmark.js";
 import userPostRoute from "./routes/userPost.js";
-
-// instantiate dotenv
-dotenv.config();
 
 
 // Start Express.js
@@ -63,3 +64,5 @@ app.use("/api/user-post", userPostRoute)
 server.listen(process.env.PORT, () => {
     console.log(`Backend server is running...`)
 }); 
+
+console.log('Cloud name:', process.env.CLOUDINARY_CLOUD_NAME); // should print your actual cloud name

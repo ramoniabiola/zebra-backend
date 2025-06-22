@@ -68,7 +68,7 @@ UserSchema.statics.login = async function(email, password) {
     const user = await this.findOne({ email });
 
     if (!user) {
-        throw Error('Incorrect username...');
+        throw Error('Incorrect email...');
     }       
 
     // Ensure user object is valid before accessing password property
