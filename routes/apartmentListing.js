@@ -19,28 +19,40 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 
-
-// APARTMENT IMAGES UPLOAD
+// APARTMENT IMAGES UPLOAD - Optimized
 router.post("/upload", upload.array("images"), async (req, res) => {
-  try {
-    const uploadedImages = [];
+    try {
+        const uploadedImages = [];
 
-    for (const file of req.files) {
-      const result = await new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream({ resource_type: "image" }, (err, result) => {
-          if (err) return reject(err);
-          resolve(result);
-        });
-        stream.end(file.buffer);
-      });
-      uploadedImages.push(result.secure_url);
+        for (const file of req.files) {
+            const result = await new Promise((resolve, reject) => {
+                const stream = cloudinary.uploader.upload_stream(
+                    {
+                        folder: "apartments", // optional: organize your uploads
+                        transformation: [
+                            { width: 1280, crop: "limit" }, // resize max width to 1280
+                            { quality: "auto" }             // smart compression
+                        ],
+                        resource_type: "image"
+                    },
+                    (err, result) => {
+                        if (err) return reject(err);
+                        resolve(result);
+                    }
+                );
+                stream.end(file.buffer);
+            });
+
+            uploadedImages.push(result.secure_url); // Store optimized version URL
+        }
+
+        res.json({ uploadedImages });
+    } catch (err) {
+        console.error("Image upload error:", err);
+        res.status(500).json({ error: "Image upload failed" });
     }
-
-    res.json({ uploadedImages });
-  } catch (err) {
-    res.status(500).json({ error: "Image upload failed" });
-  }
 });
+
 
 
 

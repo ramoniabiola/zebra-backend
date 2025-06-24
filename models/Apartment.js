@@ -14,7 +14,7 @@ const ApartmentSchema = new mongoose.Schema(
         location: { type: String, required: true },
         apartment_address: { type: String, required: true },
         nearest_landmark: { type: String },
-        images: [{ type: String, required: true }],
+        uploadedImages: [{ type: String, required: true }],
         contact_phone: { type: String, required: true },
         contact_name: { type: String, required: true },
         isAvailable: { type: Boolean, default: true },
