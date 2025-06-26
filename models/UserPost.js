@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 const UserPostSchema = new mongoose.Schema(
     {
         userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+        
         apartment_listings: [
             {
                 ApartmentId: { type: mongoose.Schema.Types.ObjectId, ref: "Apartment", required: true },

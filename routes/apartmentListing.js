@@ -1,5 +1,6 @@
 import { Router } from "express";
 import Apartment from "../models/Apartment.js";
+import UserPost from "../models/UserPost.js";
 import ReportLog from "../models/ReportLog.js";
 import verifyUserToken from "../middlewares/verifyUserToken.js";
 import verifyAdminToken from "../middlewares/verifyAdminToken.js";
@@ -59,83 +60,37 @@ router.post("/upload", upload.array("images"), async (req, res) => {
 // CREATE AN APARTMENT LISTING (Only for Landlords & Agents)
 router.post("/create", verifyUserToken, async (req, res) => {
     try {
-        const { images } = req.body;
-
-        // Ensure images do not exceed 10
-        if (images && images.length > 10) {
-            return res.status(400).json({ error: "You can upload a maximum of 10 images." });
-        }
-
         // Create new apartment listing
         const newListing = new Apartment({
             ...req.body,
-            createdBy: req.user.id // Attach user ID from token
+            userId: req.user.id, // Attach user ID from token
         });
 
         // Save the new apartment to the database
         const savedListing = await newListing.save();
 
+        // 🔁 Add listing to UserPost tracker
+        await UserPost.findOneAndUpdate(
+            { userId: req.user.id },
+            {
+                $push: {
+                    apartment_listings: {
+                        ApartmentId: savedListing._id,
+                        postedAt: savedListing.createdAt,
+                    },
+                },
+            },
+            { upsert: true, new: true }
+        );
+
         // Return the saved apartment
         res.status(201).json(savedListing);
     } catch (err) {
-        res.status(500).json({ error: "Failed to create apartment listing", message: err.message });
-    }
-});
-
-
-
-// UPDATE AN APARTMENT LISTED (Only for Landlords/Agents)
-router.put("/update/:id", verifyUserToken, async (req, res) => {
-    try {
-        // Find the listing to check ownership
-        const listing = await Apartment.findById(req.params.id);
-
-        // If listing not found
-        if (!listing) {
-            return res.status(404).json({ error: "Apartment not found" });
-        }
-
-        // Ensure only the creator (landlord/agent) can update it
-        if (listing.createdBy.toString() !== req.user.id) {
-            return res.status(403).json({ error: "Forbidden: You can only update your own listings." });
-        }
-
-        // Proceed with the update
-        const updatedListing = await Apartment.findByIdAndUpdate(
-            req.params.id,
-            { $set: req.body },
-            { new: true } // Return updated document
-        );
-
-        res.status(200).json(updatedListing);
-    } catch (err) {
-        console.error("Error updating listing:", err);
-        res.status(500).json({ error: "Internal server error" });
-    }
-});
-
-
-
-// User-only Delete Route (Landlord/Agent)
-router.delete("/delete/:id", verifyUserToken, async (req, res) => {
-    try {
-        const listing = await Apartment.findById(req.params.id);
-
-        if (!listing) {
-            return res.status(404).json({ error: "Apartment not found." });
-        }
-
-        // Ensure listing has a createdBy field before checking ownership
-        if (!listing.createdBy || listing.createdBy.toString() !== req.user.id) {
-            return res.status(403).json({ error: "Forbidden: You can only delete your own listings." });
-        }
-
-        await Apartment.findByIdAndDelete(req.params.id);
-        res.status(200).json({ message: "Apartment listing has been deleted successfully." });
-    } catch (err) {
-        console.error("Error deleting apartment:", err);
-        res.status(500).json({ error: "Internal server error" });
-    }
+    res.status(500).json({
+        error: "Failed to create apartment listing",
+        message: err.message,
+    });
+  }
 });
 
 

@@ -27,6 +27,7 @@ const ApartmentSchema = new mongoose.Schema(
         views: { type: Number, default: 0 },
         verified_listing: { type: Boolean, default: false },
         reportCount: { type: Number, default: 0 }, 
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }
     },
     { timestamps: true }
 );
