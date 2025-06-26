@@ -1,5 +1,5 @@
 import { Router } from "express";
-import UserPost from "../models/UserPost.js";
+import UserListings from "../models/UserListings.js";
 import Apartment from "../models/Apartment.js"
 import verifyUserToken from "../middlewares/verifyUserToken.js"
 
@@ -18,14 +18,14 @@ router.get("/:userId", verifyUserToken, async (req, res) => {
         }
     
         // Get user's post tracker and populate ApartmentId 
-        const userPosts = await UserPost.findOne({ userId }).populate("apartment_listings.ApartmentId");
+        const userListings = await UserListings.findOne({ userId }).populate("apartment_listings.ApartmentId");
     
-        if (!userPosts || userPosts.apartment_listings.length === 0) {
+        if (!userListings || userListings.apartment_listings.length === 0) {
             return res.status(404).json({ message: "No apartment listings found for this user." });
         }
     
         //  Filter: only active listings (isAvailable === true)
-        const activeListings = userPosts.apartment_listings.filter(
+        const activeListings = userListings.apartment_listings.filter(
             (listing) => listing.ApartmentId && listing.ApartmentId.isAvailable
         );
     
@@ -67,14 +67,14 @@ router.get("/search/active", verifyUserToken, async (req, res) => {
         }
 
         // Fetch the user's listings and populate apartments
-        const userPosts = await UserPost.findOne({ userId }).populate("apartment_listings.ApartmentId");
+        const userListings = await UserListings.findOne({ userId }).populate("apartment_listings.ApartmentId");
 
-        if (!userPosts || userPosts.apartment_listings.length === 0) {
+        if (!userListings || userListings.apartment_listings.length === 0) {
             return res.status(404).json({ error: "You have no posted apartments." });
         }
 
         // Filter by query + isAvailable === true
-        const activeListings = userPosts.apartment_listings.filter((listing) => {
+        const activeListings = userLisingss.apartment_listings.filter((listing) => {
             const apt = listing.ApartmentId;
             if (!apt || !apt.isAvailable) return false;
 
@@ -119,15 +119,15 @@ router.get("/count/dashboard", verifyUserToken, async (req, res) => {
 
     // Run all 3 counts in parallel for speed
     const [userPostDoc, activeCount, deactivatedCount] = await Promise.all([
-      UserPost.findOne({ userId }), // To get total listings posted (based on history)
-      Apartment.countDocuments({ userId, isAvailable: true }),
-      Apartment.countDocuments({ userId, isAvailable: false }),
+        UserListings.findOne({ userId }), // To get total listings posted (based on history)
+        Apartment.countDocuments({ userId, isAvailable: true }),
+        Apartment.countDocuments({ userId, isAvailable: false }),
     ]);
 
-    const totalPosted = userPostDoc?.apartment_listings?.length || 0;
+    const totalListings = userListingsDoc?.apartment_listings?.length || 0;
 
     res.status(200).json({
-      totalPosted,
+      totalListings,
       activeListings: activeCount,
       deactivatedListings: deactivatedCount,
     });
@@ -283,14 +283,14 @@ router.get("/search/deactivated", verifyUserToken, async (req, res) => {
         }
 
         // Fetch user's listings and populate the referenced apartments
-        const userPosts = await UserPost.findOne({ userId }).populate("apartment_listings.ApartmentId");
+        const userListings = await UserListings.findOne({ userId }).populate("apartment_listings.ApartmentId");
 
-        if (!userPosts || userPosts.apartment_listings.length === 0) {
+        if (!userListings || userListings.apartment_listings.length === 0) {
             return res.status(404).json({ error: "You have no posted apartments." });
         }
 
         // Filter by query + isAvailable === false
-        const deactivatedListings = userPosts.apartment_listings.filter((listing) => {
+        const deactivatedListings = userListings.apartment_listings.filter((listing) => {
             const apt = listing.ApartmentId;
             if (!apt || apt.isAvailable) return false;
 

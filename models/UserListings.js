@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 
-const UserPostSchema = new mongoose.Schema(
+const UserListingsSchema = new mongoose.Schema(
     {
         userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
         
@@ -16,4 +16,4 @@ const UserPostSchema = new mongoose.Schema(
 );
 
 
-export default mongoose.model("UserPost", UserPostSchema);
+export default mongoose.model("UserListings", UserListingsSchema);

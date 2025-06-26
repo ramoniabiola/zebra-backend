@@ -1,6 +1,6 @@
 import { Router } from "express";
 import Apartment from "../models/Apartment.js";
-import UserPost from "../models/UserPost.js";
+import UserListings from "../models/UserListings.js";
 import ReportLog from "../models/ReportLog.js";
 import verifyUserToken from "../middlewares/verifyUserToken.js";
 import verifyAdminToken from "../middlewares/verifyAdminToken.js";
@@ -70,7 +70,7 @@ router.post("/create", verifyUserToken, async (req, res) => {
         const savedListing = await newListing.save();
 
         // 🔁 Add listing to UserPost tracker
-        await UserPost.findOneAndUpdate(
+        await UserListings.findOneAndUpdate(
             { userId: req.user.id },
             {
                 $push: {
