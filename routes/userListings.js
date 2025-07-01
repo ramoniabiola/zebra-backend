@@ -74,7 +74,7 @@ router.get("/search/active", verifyUserToken, async (req, res) => {
         }
 
         // Filter by query + isAvailable === true
-        const activeListings = userLisingss.apartment_listings.filter((listing) => {
+        const activeListings = userListings.apartment_listings.filter((listing) => {
             const apt = listing.ApartmentId;
             if (!apt || !apt.isAvailable) return false;
 
@@ -118,7 +118,7 @@ router.get("/count/dashboard", verifyUserToken, async (req, res) => {
     const userId = req.user.id;
 
     // Run all 3 counts in parallel for speed
-    const [userPostDoc, activeCount, deactivatedCount] = await Promise.all([
+    const [userListingsDoc, activeCount, deactivatedCount] = await Promise.all([
         UserListings.findOne({ userId }), // To get total listings posted (based on history)
         Apartment.countDocuments({ userId, isAvailable: true }),
         Apartment.countDocuments({ userId, isAvailable: false }),

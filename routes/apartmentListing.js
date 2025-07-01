@@ -173,42 +173,242 @@ router.get("/", async (req, res) => {
 });
 
 
-
-// GET APARTMENT LISTINGS(search query) BASED ON (LOCATION & APARTMENT TYPE)
+// SEARCH APARTMENT LISTINGS(search query) 
 router.get("/search", async (req, res) => {
     try {
-        const { location, apartment_type, page = 1, limit = 10 } = req.query;
+        
+        // Handle both named parameters and a general 'q' parameter
+        let {
+            location,
+            apartment_type,
+            max_price,
+            min_price,
+            bedrooms,
+            keyword,
+            q, // General search parameter
+            page = 1,
+            limit = 10,
+        } = req.query;
 
-        // Construct query object based on provided filters
-        let query = {};
-
-        // Filter by location (case-insensitive)
-        if (location) {
-            query.location = { $regex: new RegExp(location, "i") };
+        // If 'q' is provided but no specific keyword, use 'q' as keyword
+        if (q && !keyword) {
+            keyword = q;
         }
 
-        // Filter by apartment type
-        if (apartment_type) {
-            query.apartment_type = apartment_type;
+        const query = {};
+        let sortObj = {};
+
+
+        // Enhanced search parsing for multi-word queries
+        if ((keyword && keyword.trim()) || (q && q.trim())) {
+            const searchTerm = (keyword || q).trim().toLowerCase();
+            
+            // Parse the search term for specific patterns
+            const parsedSearch = parseSearchTerm(searchTerm);
+            
+            // Build the query based on parsed terms
+            const searchConditions = [];
+            
+            // If we extracted specific filters, apply them
+            if (parsedSearch.bedrooms && !bedrooms) {
+                query.bedrooms = parsedSearch.bedrooms;
+            }
+            
+            if (parsedSearch.apartmentType && !apartment_type) {
+                query.apartment_type = { $regex: new RegExp(parsedSearch.apartmentType, "i") };
+            }
+            
+            // Always search across text fields with remaining terms or full term
+            const searchTermsForText = parsedSearch.remainingTerms.length > 0 
+                ? parsedSearch.remainingTerms.join(' ') 
+                : searchTerm;
+                
+            if (searchTermsForText) {
+                searchConditions.push(
+                    { title: { $regex: new RegExp(searchTermsForText, "i") } },
+                    { description: { $regex: new RegExp(searchTermsForText, "i") } },
+                    { location: { $regex: new RegExp(searchTermsForText, "i") } }
+                );
+                
+                // Also search for individual words in the term
+                const words = searchTermsForText.split(/\s+/);
+                if (words.length > 1) {
+                    words.forEach(word => {
+                        if (word.length > 2) { // Skip very short words
+                            searchConditions.push(
+                                { location: { $regex: new RegExp(word, "i") } },
+                                { title: { $regex: new RegExp(word, "i") } },
+                                { description: { $regex: new RegExp(word, "i") } }
+                            );
+                        }
+                    });
+                }
+            }
+            
+            if (searchConditions.length > 0) {
+                query.$or = searchConditions;
+            }
         }
 
-        // Calculate pagination
+        // Helper function to parse search terms
+        function parseSearchTerm(searchTerm) {
+            const result = {
+                bedrooms: null,
+                apartmentType: null,
+                remainingTerms: []
+            };
+            
+            const words = searchTerm.split(/\s+/);
+            const processedWords = new Set();
+            
+            // Bedroom patterns
+            const bedroomPatterns = [
+                /(\d+)[-\s]?bedroom?s?/i,
+                /(\d+)[-\s]?bed/i,
+                /(\d+)[-\s]?br/i,
+                /(one|two|three|four|five|six|1|2|3|4|5|6)[-\s]?bedroom?s?/i,
+                /(studio)/i
+            ];
+            
+            // Apartment type patterns
+            const apartmentTypePatterns = [
+                /(studio|mini[\s-]?flat|self[\s-]?con|self[\s-]?contained|duplex|penthouse|bungalow)/i,
+                /(flat|apartment)/i
+            ];
+            
+            // Check for bedroom patterns
+            for (const pattern of bedroomPatterns) {
+                const match = searchTerm.match(pattern);
+                if (match) {
+                    if (match[1].toLowerCase() === 'studio') {
+                        result.bedrooms = 0; // Studio = 0 bedrooms
+                    } else {
+                        const bedroomCount = convertWordToNumber(match[1].toLowerCase());
+                        if (bedroomCount !== null) {
+                            result.bedrooms = bedroomCount;
+                        }
+                    }
+                    // Mark the matched words as processed
+                    words.forEach((word, index) => {
+                        if (match[0].toLowerCase().includes(word.toLowerCase())) {
+                            processedWords.add(index);
+                        }
+                    });
+                    break;
+                }
+            }
+            
+            // Check for apartment type patterns
+            for (const pattern of apartmentTypePatterns) {
+                const match = searchTerm.match(pattern);
+                if (match) {
+                    result.apartmentType = match[1];
+                    // Mark the matched words as processed
+                    words.forEach((word, index) => {
+                        if (match[0].toLowerCase().includes(word.toLowerCase())) {
+                            processedWords.add(index);
+                        }
+                    });
+                    break;
+                }
+            }
+            
+            // Collect remaining unprocessed words
+            words.forEach((word, index) => {
+                if (!processedWords.has(index) && word.length > 1) {
+                    result.remainingTerms.push(word);
+                }
+            });
+            
+            return result;
+        }
+        
+        // Helper function to convert word numbers to digits
+        function convertWordToNumber(word) {
+            const numberMap = {
+                'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6,
+                '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6
+            };
+            return numberMap[word] || null;
+        }
+
+        // Location filter (only if no keyword or keyword doesn't cover location)
+        if (location && location.trim()) {
+            if (!keyword) {
+                query.location = { $regex: new RegExp(location.trim(), "i") };
+            } else {
+                // Add location as additional filter even with keyword
+                query.location = { $regex: new RegExp(location.trim(), "i") };
+            }
+        }
+
+        // Apartment type filter
+        if (apartment_type && apartment_type.trim()) {
+            query.apartment_type = { $regex: new RegExp(apartment_type.trim(), "i") };
+        }
+
+        // Bedrooms filter
+        if (bedrooms) {
+            const bedroomCount = parseInt(bedrooms);
+            if (!isNaN(bedroomCount)) {
+                query.bedrooms = bedroomCount;
+            }
+        }
+
+        // Price range filter
+        if (min_price || max_price) {
+            query.price = {};
+            if (min_price) {
+                const minPriceNum = parseInt(min_price);
+                if (!isNaN(minPriceNum)) {
+                    query.price.$gte = minPriceNum;
+                }
+            }
+            if (max_price) {
+                const maxPriceNum = parseInt(max_price);
+                if (!isNaN(maxPriceNum)) {
+                    query.price.$lte = maxPriceNum;
+                }
+            }
+        }
+
+        // Build sort object
+        if (keyword && keyword.trim()) {
+            // For keyword searches, sort by creation date (most recent first)
+            sortObj.createdAt = -1;
+        } else if (max_price || min_price) {
+            sortObj.price = min_price ? 1 : -1;
+        } else if (bedrooms) {
+            sortObj.bedrooms = 1;
+        } else {
+            sortObj.createdAt = -1;
+        }
+
+        // Debug: Log the final query
+        console.log("MongoDB query:", JSON.stringify(query, null, 2));
+        console.log("Sort object:", sortObj);
+
         const skip = (page - 1) * limit;
-
-        // Fetch listings based on query
+        
         const listings = await Apartment.find(query)
-        .sort({ createdAt: -1 }) // Show latest apartments first
+        .sort(sortObj)
         .skip(skip)
         .limit(parseInt(limit));
 
-        // Return results
+
+        // If Apartment not found, return 404 Not Found
+        if (listings.length === 0) {
+            return res.status(404).json({ error: "Apartments not found..." });
+        }
+
         res.status(200).json(listings);
     } catch (err) {
         console.error("Error fetching apartment listings:", err);
         res.status(500).json({ error: "Internal server error" });
     }
 });
- 
+
+
 
 
 

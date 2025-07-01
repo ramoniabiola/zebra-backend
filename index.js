@@ -45,7 +45,7 @@ mongoose.connect(process.env.MONGO_URL, {
 
 // USE EXPRESS.JSON MIDDLEWARE
 app.use(express.json());
-
+app.use(express.urlencoded({ extended: true }));
 
 // API ROUTES
 app.use("/api/admin/auth", adminAuthRoute)
