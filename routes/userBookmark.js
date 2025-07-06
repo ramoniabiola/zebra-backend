@@ -40,7 +40,8 @@ router.post("/", verifyTenantToken, async (req, res) => {
 
         // Save the bookmark
         await userBookmark.save();
-        res.status(200).json({ message: "Apartment bookmarked successfully", userBookmark });
+
+        res.status(200).json({ apartmentId });
     } catch (err) {
         console.error("Error bookmarking apartment:", err);
         res.status(500).json({ error: "Internal server error" });
@@ -61,16 +62,11 @@ router.get("/", verifyTenantToken, async (req, res) => {
 
         // Find user bookmarks
         const userBookmark = await UserBookmark.findOne({ userId })
-            .populate({
-                path: "apartment_listings.apartmentId", // Populate apartment details
-                select: "-createdAt -updatedAt", // Exclude timestamps for cleaner data
-            })
-            .lean();
+        .populate({
+            path: "apartment_listings.apartmentId", // Populate apartment details
+        });
 
-        if (!userBookmark || userBookmark.apartment_listings.length === 0) {
-            return res.status(404).json({ error: "No bookmarked apartments found." });
-        }
- 
+        
         // Paginate bookmarks
         const startIndex = (page - 1) * limit;
         const endIndex = startIndex + parseInt(limit);

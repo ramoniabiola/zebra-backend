@@ -384,10 +384,6 @@ router.get("/search", async (req, res) => {
             sortObj.createdAt = -1;
         }
 
-        // Debug: Log the final query
-        console.log("MongoDB query:", JSON.stringify(query, null, 2));
-        console.log("Sort object:", sortObj);
-
         const skip = (page - 1) * limit;
         
         const listings = await Apartment.find(query)
