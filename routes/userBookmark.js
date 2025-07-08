@@ -115,57 +115,129 @@ router.delete("/:apartmentId", verifyTenantToken, async (req, res) => {
 });
 
 
-
-
 // GET A SPECIFIC BOOKMARKED APARTMENT WITHIN USER BOOKMARKED APARTMENT LISTINGS
-
 router.get("/search", verifyTenantToken, async (req, res) => {
     try {
         const userId = req.user.id;
-        const { title, location, page = 1, limit = 10 } = req.query;
-
-        // Ensure at least one search parameter is provided
-        if (!title && !location) {
-            return res.status(400).json({ error: "Please provide a title or location for search." });
-        }
+        const { 
+            title, 
+            location, 
+            apartment_type,
+            bedrooms,
+            min_price,
+            max_price,
+            keyword, // General search term
+            page = 1, 
+            limit = 10 
+        } = req.query;
 
         // Parse pagination values safely
-        const pageNumber = parseInt(page) || 1;
-        const pageSize = parseInt(limit) || 10;
+        const pageNumber = Math.max(1, parseInt(page) || 1);
+        const pageSize = Math.min(50, Math.max(1, parseInt(limit) || 10)); // Limit max page size
         const skip = (pageNumber - 1) * pageSize;
 
-        // Find the user's bookmarked apartments
+        // Find the user's bookmarked apartments - REMOVED SORT FROM POPULATE
         const userBookmark = await UserBookmark.findOne({ userId })
-        .populate({
-            path: "apartment_listings.apartmentId", 
-            options: { sort: { createdAt: -1 } }, // Sort by newest
-        })
-        .lean();
+            .populate({
+                path: "apartment_listings.apartmentId"
+            })
+            .lean();
 
         // If no bookmarks found
         if (!userBookmark || userBookmark.apartment_listings.length === 0) {
-            return res.status(404).json({ error: "No bookmarked apartments found." });
+             return res.status(404).json({ 
+                message: "No bookmarked apartments found.",
+                totalResults: 0,
+                currentPage: pageNumber,
+                totalPages: 0,
+                listings: []
+            });
         }
 
         // Remove bookmarks pointing to deleted apartments
         let filteredListings = userBookmark.apartment_listings.filter(apartment => apartment.apartmentId);
 
+        // SORT HERE AFTER POPULATION
+        filteredListings.sort((a, b) => {
+            const dateA = new Date(a.apartmentId.createdAt);
+            const dateB = new Date(b.apartmentId.createdAt);
+            return dateB - dateA; // Sort by newest first
+        });
+
         // Apply search filters
-        if (title) {
+        if (keyword && keyword.trim()) {
+            const searchTerm = keyword.trim().toLowerCase();
+            filteredListings = filteredListings.filter(apartment => {
+                const apt = apartment.apartmentId;
+                return (
+                    apt.title?.toLowerCase().includes(searchTerm) ||
+                    apt.description?.toLowerCase().includes(searchTerm) ||
+                    apt.location?.toLowerCase().includes(searchTerm) ||
+                    apt.apartment_type?.toLowerCase().includes(searchTerm)
+                );
+            });
+        }
+
+        // Apply specific filters
+        if (title && title.trim()) {
             filteredListings = filteredListings.filter(apartment =>
-                apartment.apartmentId.title.toLowerCase().includes(title.toLowerCase())
+                apartment.apartmentId.title?.toLowerCase().includes(title.toLowerCase())
             );
         }
 
-        if (location) {
+        if (location && location.trim()) {
             filteredListings = filteredListings.filter(apartment =>
-                apartment.apartmentId.location.toLowerCase().includes(location.toLowerCase())
+                apartment.apartmentId.location?.toLowerCase().includes(location.toLowerCase())
             );
+        }
+
+        if (apartment_type && apartment_type.trim()) {
+            filteredListings = filteredListings.filter(apartment =>
+                apartment.apartmentId.apartment_type?.toLowerCase().includes(apartment_type.toLowerCase())
+            );
+        }
+
+        if (bedrooms) {
+            const bedroomCount = parseInt(bedrooms);
+            if (!isNaN(bedroomCount)) {
+                filteredListings = filteredListings.filter(apartment =>
+                    apartment.apartmentId.bedrooms === bedroomCount
+                );
+            }
+        }
+
+        // Price range filters
+        if (min_price || max_price) {
+            filteredListings = filteredListings.filter(apartment => {
+                const price = apartment.apartmentId.price;
+                if (!price) return false;
+                
+                let matchesPrice = true;
+                if (min_price) {
+                    const minPriceNum = parseInt(min_price);
+                    if (!isNaN(minPriceNum)) {
+                        matchesPrice = matchesPrice && price >= minPriceNum;
+                    }
+                }
+                if (max_price) {
+                    const maxPriceNum = parseInt(max_price);
+                    if (!isNaN(maxPriceNum)) {
+                        matchesPrice = matchesPrice && price <= maxPriceNum;
+                    }
+                }
+                return matchesPrice;
+            });
         }
 
         // If no results match the search
         if (filteredListings.length === 0) {
-            return res.status(404).json({ error: "No matching bookmarked apartments found." });
+            return res.status(404).json({ 
+                message: "No matching bookmarked apartments found.",
+                totalResults: 0,
+                currentPage: pageNumber,
+                totalPages: 0,
+                listings: []
+            });
         }
 
         // Apply pagination
@@ -173,18 +245,22 @@ router.get("/search", verifyTenantToken, async (req, res) => {
 
         // Return results
         res.status(200).json({
+            success: true,
             totalResults: filteredListings.length,
             currentPage: pageNumber,
             totalPages: Math.ceil(filteredListings.length / pageSize),
+            hasNextPage: pageNumber < Math.ceil(filteredListings.length / pageSize),
+            hasPrevPage: pageNumber > 1,
             listings: paginatedListings,
         });
 
     } catch (err) {
         console.error("Error fetching bookmarked apartments:", err);
-        res.status(500).json({ error: "Internal server error" });
+        res.status(500).json({ 
+            message: "Internal server error"
+        });
     }
 });
-
 
 
 
