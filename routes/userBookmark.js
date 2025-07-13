@@ -41,13 +41,20 @@ router.post("/", verifyTenantToken, async (req, res) => {
         // Save the bookmark
         await userBookmark.save();
 
-        res.status(200).json({ apartmentId });
+        // Populate the apartment details for the newly added bookmark
+        await userBookmark.populate({
+            path: "apartment_listings.apartmentId",
+        });
+
+        // Find the newly added bookmark (first one due to unshift)
+        const newBookmark = userBookmark.apartment_listings[0];
+
+        res.status(200).json(newBookmark);
     } catch (err) {
         console.error("Error bookmarking apartment:", err);
         res.status(500).json({ error: "Internal server error" });
     }
 });
-
 
 
 // GET ALL USER BOOKMARKS (Tenant)
@@ -66,6 +73,14 @@ router.get("/", verifyTenantToken, async (req, res) => {
             path: "apartment_listings.apartmentId", // Populate apartment details
         });
 
+        if (!userBookmark) {
+            return res.status(200).json({
+                totalBookmarks: 0,
+                currentPage: parseInt(page),
+                totalPages: 0,
+                bookmarks: [],
+            });
+        }
         
         // Paginate bookmarks
         const startIndex = (page - 1) * limit;

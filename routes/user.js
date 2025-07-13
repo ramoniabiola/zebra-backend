@@ -4,8 +4,59 @@ import verifyAdminToken from "../middlewares/verifyAdminToken.js"
 import verifyGeneralUserToken from "../middlewares/verifyGeneralUserToken.js"
 import moment from "moment";
 import bcrypt from "bcryptjs";
+import multer from "multer";
+import cloudinary from "../config/cloudinary.js";
+
+
 
 const router = Router();
+
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+
+// USER PROFILE IMAGE UPLOAD - Cloudinary Backend Route
+router.post("/upload", upload.single("image"), async (req, res) => {
+    try {
+        // Check if file was uploaded
+        if (!req.file) {
+            return res.status(400).json({ error: "No image file provided" });
+        }
+
+        // Upload single image to Cloudinary
+        const result = await new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+                {
+                    folder: "profile_pictures", // organize uploads in profile_pictures folder
+                    transformation: [
+                        { width: 500, height: 500, crop: "fill" }, // square crop for profile pictures
+                        { quality: "auto" },                       // smart compression
+                        { fetch_format: "auto" }                   // optimal format (webp, jpg, etc.)
+                    ],
+                    resource_type: "image"
+                },
+                (err, result) => {
+                    if (err) return reject(err);
+                    resolve(result);
+                }
+            );
+            stream.end(req.file.buffer);
+        });
+
+        // Return the uploaded image URL
+        res.json({ 
+            imageUrl: result.secure_url,
+            publicId: result.public_id,
+            message: "Image uploaded successfully" 
+        });
+    } catch (err) {
+        console.error("Image upload error:", err);
+        res.status(500).json({ error: "Image upload failed" });
+    }
+});
+
+
 
 
 // UPDATE USER
