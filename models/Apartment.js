@@ -21,7 +21,7 @@ const ApartmentSchema = new mongoose.Schema(
         apartment_amenities: [{ type: String }],    
         bedrooms: { type: Number, required: true },
         bathrooms: { type: Number, required: true },
-        apartmen_size: { type: String },
+        apartment_size: { type: String },
         furnished: { type: Boolean, default: false },
         service_charge: { type: Number, default: 0 },
         views: { type: Number, default: 0 },

@@ -16,7 +16,7 @@ import userAuthRoute from "./routes/userAuth.js";
 import userRoute from "./routes/user.js";
 import apartmentListingRoute from "./routes/apartmentListing.js";
 import userBookmarkRoute from "./routes/userBookmark.js";
-import userListingsRoute from "./routes/UserListings.js";
+import userListingsRoute from "./routes/userListings.js";
 
 
 // Start Express.js

@@ -11,36 +11,41 @@ router.get("/:userId", verifyUserToken, async (req, res) => {
     try {
         const { userId } = req.params;
         const { page = 1, limit = 10 } = req.query;
-    
-        // Authorization check
+
         if (req.user.id !== userId) {
             return res.status(403).json({ error: "Forbidden: You can only view your own listings." });
         }
-    
-        // Get user's post tracker and populate ApartmentId 
+
         const userListings = await UserListings.findOne({ userId }).populate("apartment_listings.ApartmentId");
-    
-        if (!userListings || userListings.apartment_listings.length === 0) {
-            return res.status(404).json({ message: "No apartment listings found for this user." });
+
+        if (!userListings) {
+            return res.status(404).json({ error: "No listings found for this user." });
         }
-    
-        //  Filter: only active listings (isAvailable === true)
+
         const activeListings = userListings.apartment_listings.filter(
             (listing) => listing.ApartmentId && listing.ApartmentId.isAvailable
         );
-    
-        //  Sort manually by postedAt (descending)
+
+        if (!activeListings || activeListings.length === 0) {
+            return res.status(200).json({
+                message: "No active apartment listings found.",
+                currentPage: Number(page),
+                totalPages: 0,
+                totalListings: 0,
+                listingsPerPage: Number(limit),
+                apartments: [],
+            });
+        }
+
+
         activeListings.sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
-    
-        //  Pagination
+
+
         const totalListings = activeListings.length;
         const totalPages = Math.ceil(totalListings / limit);
         const paginatedListings = activeListings.slice((page - 1) * limit, page * limit);
-    
-        // Extract populated Apartment documents
         const apartments = paginatedListings.map((listing) => listing.ApartmentId);
 
-        // Send response
         res.status(200).json({
             message: "Active apartment listings fetched successfully.",
             currentPage: Number(page),
@@ -56,58 +61,202 @@ router.get("/:userId", verifyUserToken, async (req, res) => {
 });
 
 
+
+// GET A SPECIFIC ACTIVE APARTMENT LISTING POSTED BY A USER(Agent / Landlord)
+router.get("/:userId/apartment/:apartmentId", verifyUserToken, async (req, res) => {
+    try {
+        const { userId, apartmentId } = req.params;
+
+        // Check if the authenticated user is requesting their own listing
+        if (req.user.id !== userId) {
+            return res.status(403).json({ error: "Forbidden: You can only view your own listings." });
+        }
+
+        // Find the user's listings
+        const userListings = await UserListings.findOne({ userId }).populate("apartment_listings.ApartmentId");
+
+        if (!userListings) {
+            return res.status(404).json({ error: "No listings found for this user." });
+        }
+
+        // Find the specific apartment listing
+        const specificListing = userListings.apartment_listings.find(
+            (listing) => listing.ApartmentId && 
+                listing.ApartmentId._id.toString() === apartmentId &&
+                listing.ApartmentId.isAvailable
+        );
+
+        if (!specificListing) {
+            return res.status(404).json({ 
+                error: "Apartment listing not found or not available." 
+            });
+        }
+
+        res.status(200).json(specificListing.ApartmentId);
+
+    } catch (err) {
+        console.error("Error fetching specific apartment listing:", err);
+        res.status(500).json({ error: "Internal server error", message: err.message });
+    }
+});
+
+
 // SEARCH USER'S ACTIVE APARTMENTS (isAvailable: true only)
 router.get("/search/active", verifyUserToken, async (req, res) => {
     try {
-        const { query, page = 1, limit = 10 } = req.query;
         const userId = req.user.id;
+        const { 
+            title, 
+            location, 
+            apartment_type,
+            bedrooms,
+            min_price,
+            max_price,
+            keyword, // General search term
+            page = 1, 
+            limit = 10 
+        } = req.query;
 
-        if (!query) {
-            return res.status(400).json({ error: "Search query is required." });
-        }
+        // Parse pagination values safely
+        const pageNumber = Math.max(1, parseInt(page) || 1);
+        const pageSize = Math.min(50, Math.max(1, parseInt(limit) || 10)); // Limit max page size
+        const skip = (pageNumber - 1) * pageSize;
 
         // Fetch the user's listings and populate apartments
-        const userListings = await UserListings.findOne({ userId }).populate("apartment_listings.ApartmentId");
+        const userListings = await UserListings.findOne({ userId })
+            .populate({
+                path: "apartment_listings.ApartmentId"
+            })
+            .lean();
 
         if (!userListings || userListings.apartment_listings.length === 0) {
-            return res.status(404).json({ error: "You have no posted apartments." });
+            return res.status(404).json({ 
+                message: "You have no posted apartments.",
+                totalResults: 0,
+                currentPage: pageNumber,
+                totalPages: 0,
+                listings: []
+            });
         }
 
-        // Filter by query + isAvailable === true
-        const activeListings = userListings.apartment_listings.filter((listing) => {
-            const apt = listing.ApartmentId;
-            if (!apt || !apt.isAvailable) return false;
+        // Filter active listings (isAvailable: true) and remove deleted apartments
+        let filteredListings = userListings.apartment_listings.filter(listing => 
+            listing.ApartmentId && listing.ApartmentId.isAvailable
+        );
 
-            return (
-                apt.title?.toLowerCase().includes(query.toLowerCase()) ||
-                apt.apartment_address?.toLowerCase().includes(query.toLowerCase())
+        // Sort by newest first (using postedAt or createdAt)
+        filteredListings.sort((a, b) => {
+            const dateA = new Date(a.postedAt || a.ApartmentId.createdAt);
+            const dateB = new Date(b.postedAt || b.ApartmentId.createdAt);
+            return dateB - dateA;
+        });
+
+        // Apply search filters
+        if (keyword && keyword.trim()) {
+            const searchTerm = keyword.trim().toLowerCase();
+            filteredListings = filteredListings.filter(listing => {
+                const apt = listing.ApartmentId;
+                return (
+                    apt.title?.toLowerCase().includes(searchTerm) ||
+                    apt.description?.toLowerCase().includes(searchTerm) ||
+                    apt.location?.toLowerCase().includes(searchTerm) ||
+                    apt.apartment_address?.toLowerCase().includes(searchTerm) ||
+                    apt.apartment_type?.toLowerCase().includes(searchTerm)
+                );
+            });
+        }
+
+        // Apply specific filters
+        if (title && title.trim()) {
+            filteredListings = filteredListings.filter(listing =>
+                listing.ApartmentId.title?.toLowerCase().includes(title.toLowerCase())
             );
-        });
-
-        const totalResults = activeListings.length;
-        const listingsPerPage = parseInt(limit);
-        const currentPage = parseInt(page);
-        const totalPages = Math.ceil(totalResults / listingsPerPage);
-
-        const paginatedResults = activeListings
-            .slice((currentPage - 1) * listingsPerPage, currentPage * listingsPerPage)
-            .map((listing) => listing.ApartmentId);
-
-        if (paginatedResults.length === 0) {
-            return res.status(404).json({ error: "No matching active apartments found on this page." });
         }
 
+        if (location && location.trim()) {
+            filteredListings = filteredListings.filter(listing =>
+                listing.ApartmentId.location?.toLowerCase().includes(location.toLowerCase()) ||
+                listing.ApartmentId.apartment_address?.toLowerCase().includes(location.toLowerCase())
+            );
+        }
+
+        if (apartment_type && apartment_type.trim()) {
+            filteredListings = filteredListings.filter(listing =>
+                listing.ApartmentId.apartment_type?.toLowerCase().includes(apartment_type.toLowerCase())
+            );
+        }
+
+        if (bedrooms) {
+            const bedroomCount = parseInt(bedrooms);
+            if (!isNaN(bedroomCount)) {
+                filteredListings = filteredListings.filter(listing =>
+                    listing.ApartmentId.bedrooms === bedroomCount
+                );
+            }
+        }
+
+        // Price range filters
+        if (min_price || max_price) {
+            filteredListings = filteredListings.filter(listing => {
+                const price = listing.ApartmentId.price;
+                if (!price) return false;
+                
+                let matchesPrice = true;
+                if (min_price) {
+                    const minPriceNum = parseInt(min_price);
+                    if (!isNaN(minPriceNum)) {
+                        matchesPrice = matchesPrice && price >= minPriceNum;
+                    }
+                }
+                if (max_price) {
+                    const maxPriceNum = parseInt(max_price);
+                    if (!isNaN(maxPriceNum)) {
+                        matchesPrice = matchesPrice && price <= maxPriceNum;
+                    }
+                }
+                return matchesPrice;
+            });
+        }
+
+        // If no results match the search
+        if (filteredListings.length === 0) {
+            return res.status(404).json({ 
+                message: "No matching active apartments found.",
+                totalResults: 0,
+                currentPage: pageNumber,
+                totalPages: 0,
+                listings: []
+            });
+        }
+
+        // Apply pagination
+        const paginatedListings = filteredListings.slice(skip, skip + pageSize);
+
+        // Extract apartment data and include posting information
+        const results = paginatedListings.map(listing => ({
+            ...listing.ApartmentId,
+            postedAt: listing.postedAt
+        }));
+
+        // Return results
         res.status(200).json({
+            success: true,
             message: "Matching active apartments retrieved successfully.",
-            currentPage,
-            totalPages,
-            totalResults,
-            listingsPerPage,
-            results: paginatedResults,
+            totalResults: filteredListings.length,
+            currentPage: pageNumber,
+            totalPages: Math.ceil(filteredListings.length / pageSize),
+            listingsPerPage: pageSize,
+            hasNextPage: pageNumber < Math.ceil(filteredListings.length / pageSize),
+            hasPrevPage: pageNumber > 1,
+            listings: results,
         });
+
     } catch (err) {
         console.error("Error searching active listings:", err);
-        res.status(500).json({ error: "Internal server error", message: err.message });
+        res.status(500).json({ 
+            error: "Internal server error",
+            message: err.message 
+        });
     }
 });
 
@@ -237,37 +386,61 @@ router.put("/reactivate/:apartmentId", verifyUserToken, async (req, res) => {
 
 
 
-
-// GET ALL USER (Agent / Landlord) DEACTIVATED APARTMENT LISTINGS
-router.get("/deactivated", verifyUserToken, async (req, res) => {
+// GET ALL DEACTIVATED APARTMENT LISTINGS POSTED BY A USER(Agent/Landlord)
+router.get("/deactivated/:userId", verifyUserToken, async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const skip = (page - 1) * limit;
+        const { userId } = req.params;
+        const { page = 1, limit = 10 } = req.query;
 
-        //  Use the correct field for user match: userId
-        const filter = { userId: req.user.id, isAvailable: false };
+        if (req.user.id !== userId) {
+            return res.status(403).json({ error: "Forbidden: You can only view your own listings." });
+        }
 
-        const total = await Apartment.countDocuments(filter);
-        
-        const userDeactivatedListings = await Apartment.find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit);
+        const userListings = await UserListings.findOne({ userId }).populate("apartment_listings.ApartmentId");
+
+        if (!userListings) {
+            return res.status(404).json({ error: "No listings found for this user." });
+        }
+
+        // Filter: only deactivated listings (isAvailable === false)
+        const deactivatedListings = userListings.apartment_listings.filter(
+            (listing) => listing.ApartmentId && !listing.ApartmentId.isAvailable
+        );
+
+        if (!deactivatedListings || deactivatedListings.length === 0) {
+            return res.status(200).json({
+                message: "No deactivated apartment listings found.",
+                currentPage: Number(page),
+                totalPages: 0,
+                totalListings: 0,
+                listingsPerPage: Number(limit),
+                apartments: [],
+            });
+        }
+
+        // Sort by postedAt (descending)
+        deactivatedListings.sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
+
+        // Pagination
+        const totalListings = deactivatedListings.length;
+        const totalPages = Math.ceil(totalListings / limit);
+        const paginatedListings = deactivatedListings.slice((page - 1) * limit, page * limit);
+        const apartments = paginatedListings.map((listing) => listing.ApartmentId);
 
         res.status(200).json({
-            currentPage: page,
-            totalPages: Math.ceil(total / limit),
-            totalListings: total,
-            listingsPerPage: limit,
-            hasMore: skip + userDeactivatedListings.length < total,
-            listings: userDeactivatedListings,
+            message: "Deactivated apartment listings fetched successfully.",
+            currentPage: Number(page),
+            totalPages,
+            totalListings,
+            listingsPerPage: Number(limit),
+            apartments,
         });
     } catch (err) {
-        console.error("Error fetching deactivated apartments:", err);
-        res.status(500).json({ error: "Internal server error" });
+        console.error("Error fetching deactivated listings:", err);
+        res.status(500).json({ error: "Internal server error", message: err.message });
     }
 });
+
 
 
 
