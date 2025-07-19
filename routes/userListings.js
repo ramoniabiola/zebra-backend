@@ -320,6 +320,8 @@ router.put("/update/:apartmentId", verifyUserToken, async (req, res) => {
 });
 
 
+
+
 // SOFT DELETE (DEACTIVATE) AN APARTMENT LISTING
 router.put("/deactivate/:apartmentId", verifyUserToken, async (req, res) => {
     try {
@@ -443,63 +445,165 @@ router.get("/deactivated/:userId", verifyUserToken, async (req, res) => {
 
 
 
-
-
 // SEARCH USER'S DEACTIVATED APARTMENTS (isAvailable: false only)
 router.get("/search/deactivated", verifyUserToken, async (req, res) => {
     try {
-        const { query, page = 1, limit = 10 } = req.query;
+
         const userId = req.user.id;
+        const { 
+            title, 
+            location, 
+            apartment_type,
+            bedrooms,
+            min_price,
+            max_price,
+            keyword, // General search term
+            page = 1, 
+            limit = 10 
+        } = req.query;
 
-        if (!query) {
-            return res.status(400).json({ error: "Search query is required." });
-        }
+        // Parse pagination values safely
+        const pageNumber = Math.max(1, parseInt(page) || 1);
+        const pageSize = Math.min(50, Math.max(1, parseInt(limit) || 10)); // Limit max page size
+        const skip = (pageNumber - 1) * pageSize;
 
-        // Fetch user's listings and populate the referenced apartments
-        const userListings = await UserListings.findOne({ userId }).populate("apartment_listings.ApartmentId");
+        // Fetch the user's listings and populate apartments
+        const userListings = await UserListings.findOne({ userId })
+            .populate({
+                path: "apartment_listings.ApartmentId"
+            })
+            .lean();
 
         if (!userListings || userListings.apartment_listings.length === 0) {
-            return res.status(404).json({ error: "You have no posted apartments." });
+            return res.status(404).json({ 
+                message: "You have no posted apartments.",
+                totalResults: 0,
+                currentPage: pageNumber,
+                totalPages: 0,
+                listings: []
+            });
         }
 
-        // Filter by query + isAvailable === false
-        const deactivatedListings = userListings.apartment_listings.filter((listing) => {
-            const apt = listing.ApartmentId;
-            if (!apt || apt.isAvailable) return false;
+        // Filter deactivated listings (isAvailable: false) and remove deleted apartments
+        let filteredListings = userListings.apartment_listings.filter(listing => 
+            listing.ApartmentId && !listing.ApartmentId.isAvailable
+        );
 
-            return (
-                apt.title?.toLowerCase().includes(query.toLowerCase()) ||
-                apt.apartment_address?.toLowerCase().includes(query.toLowerCase())
+        // Sort by newest first (using postedAt or createdAt)
+        filteredListings.sort((a, b) => {
+            const dateA = new Date(a.postedAt || a.ApartmentId.createdAt);
+            const dateB = new Date(b.postedAt || b.ApartmentId.createdAt);
+            return dateB - dateA;
+        });
+
+        // Apply search filters
+        if (keyword && keyword.trim()) {
+            const searchTerm = keyword.trim().toLowerCase();
+            filteredListings = filteredListings.filter(listing => {
+                const apt = listing.ApartmentId;
+                return (
+                    apt.title?.toLowerCase().includes(searchTerm) ||
+                    apt.description?.toLowerCase().includes(searchTerm) ||
+                    apt.location?.toLowerCase().includes(searchTerm) ||
+                    apt.apartment_address?.toLowerCase().includes(searchTerm) ||
+                    apt.apartment_type?.toLowerCase().includes(searchTerm)
+                );
+            });
+        }
+
+        // Apply specific filters
+        if (title && title.trim()) {
+            filteredListings = filteredListings.filter(listing =>
+                listing.ApartmentId.title?.toLowerCase().includes(title.toLowerCase())
             );
-        });
-
-        const totalResults = deactivatedListings.length;
-        const listingsPerPage = parseInt(limit);
-        const currentPage = parseInt(page);
-        const totalPages = Math.ceil(totalResults / listingsPerPage);
-
-        const paginatedResults = deactivatedListings
-        .slice((currentPage - 1) * listingsPerPage, currentPage * listingsPerPage)
-        .map((listing) => listing.ApartmentId);
-        if (paginatedResults.length === 0) {
-            return res.status(404).json({ error: "No matching deactivated apartments found on this page." });
         }
 
+        if (location && location.trim()) {
+            filteredListings = filteredListings.filter(listing =>
+                listing.ApartmentId.location?.toLowerCase().includes(location.toLowerCase()) ||
+                listing.ApartmentId.apartment_address?.toLowerCase().includes(location.toLowerCase())
+            );
+        }
+
+        if (apartment_type && apartment_type.trim()) {
+            filteredListings = filteredListings.filter(listing =>
+                listing.ApartmentId.apartment_type?.toLowerCase().includes(apartment_type.toLowerCase())
+            );
+        }
+
+        if (bedrooms) {
+            const bedroomCount = parseInt(bedrooms);
+            if (!isNaN(bedroomCount)) {
+                filteredListings = filteredListings.filter(listing =>
+                    listing.ApartmentId.bedrooms === bedroomCount
+                );
+            }
+        }
+
+        // Price range filters
+        if (min_price || max_price) {
+            filteredListings = filteredListings.filter(listing => {
+                const price = listing.ApartmentId.price;
+                if (!price) return false;
+                
+                let matchesPrice = true;
+                if (min_price) {
+                    const minPriceNum = parseInt(min_price);
+                    if (!isNaN(minPriceNum)) {
+                        matchesPrice = matchesPrice && price >= minPriceNum;
+                    }
+                }
+                if (max_price) {
+                    const maxPriceNum = parseInt(max_price);
+                    if (!isNaN(maxPriceNum)) {
+                        matchesPrice = matchesPrice && price <= maxPriceNum;
+                    }
+                }
+                return matchesPrice;
+            });
+        }
+
+        // If no results match the search
+        if (filteredListings.length === 0) {
+            return res.status(404).json({ 
+                message: "No matching deactivated apartments found.",
+                totalResults: 0,
+                currentPage: pageNumber,
+                totalPages: 0,
+                listings: []
+            });
+        }
+
+        // Apply pagination
+        const paginatedListings = filteredListings.slice(skip, skip + pageSize);
+
+        // Extract apartment data and include posting information
+        const results = paginatedListings.map(listing => ({
+            ...listing.ApartmentId,
+            postedAt: listing.postedAt
+        }));
+
+        // Return results
         res.status(200).json({
+            success: true,
             message: "Matching deactivated apartments retrieved successfully.",
-            currentPage,
-            totalPages,
-            totalResults,
-            listingsPerPage,
-            results: paginatedResults,
+            totalResults: filteredListings.length,
+            currentPage: pageNumber,
+            totalPages: Math.ceil(filteredListings.length / pageSize),
+            listingsPerPage: pageSize,
+            hasNextPage: pageNumber < Math.ceil(filteredListings.length / pageSize),
+            hasPrevPage: pageNumber > 1,
+            listings: results,
         });
+
     } catch (err) {
         console.error("Error searching deactivated listings:", err);
-        res.status(500).json({ error: "Internal server error", message: err.message });
+        res.status(500).json({ 
+            error: "Internal server error",
+            message: err.message 
+        });
     }
 });
-
-
 
 
 

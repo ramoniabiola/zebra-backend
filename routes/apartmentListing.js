@@ -144,22 +144,21 @@ router.get("/find/:id", async (req, res) => {
 });
 
 
-
-// GET ALL APARTMENT LISTINGS(paginated approach to apartment listings)
+// GET ALL AVAILABLE APARTMENT LISTINGS (paginated approach to apartment listings)
 router.get("/", async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1; // Default to page 1
         const limit = parseInt(req.query.limit) || 10; // Default limit to 10 listings per request
         const skip = (page - 1) * limit;
 
-        // Fetch listings with pagination
-        const listings = await Apartment.find()
+        // Fetch only available listings with pagination
+        const listings = await Apartment.find({ isAvailable: true })
         .sort({ createdAt: -1 }) // Latest listings first
         .skip(skip)
         .limit(limit);
 
-        // Get total count of listings
-        const total = await Apartment.countDocuments();
+        // Get total count of available listings only
+        const total = await Apartment.countDocuments({ isAvailable: true });
 
         res.status(200).json({
             listings,
@@ -167,7 +166,7 @@ router.get("/", async (req, res) => {
             hasMore: skip + listings.length < total // Check if more pages exist
         });
     } catch (err) {
-        console.error("Error fetching Apartment listings:", err);
+        console.error("Error fetching available apartment listings:", err);
         res.status(500).json({ error: "Internal server error" });
     }
 });
