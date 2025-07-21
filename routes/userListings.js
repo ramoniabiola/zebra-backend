@@ -288,40 +288,6 @@ router.get("/count/dashboard", verifyUserToken, async (req, res) => {
 
 
 
-
-// UPDATE AN APARTMENT LISTING POSTED BY THE USER
-router.put("/update/:apartmentId", verifyUserToken, async (req, res) => {
-    try {
-        const { apartmentId } = req.params;
-        const userId = req.user.id;
-
-        // Ensure the apartment exists and belongs to the user
-        const apartment = await Apartment.findOne({ _id: apartmentId, userId });
-
-        if (!apartment) {
-            return res.status(404).json({ error: "Apartment listing not found or unauthorized" });
-        }
-
-        // Update the apartment directly
-        const updatedApartment = await Apartment.findByIdAndUpdate(
-            apartmentId,
-            { $set: req.body },
-            { new: true }
-        );
-
-        res.status(200).json({
-            message: "Apartment listing updated successfully",
-            apartment: updatedApartment,
-        });
-    } catch (err) {
-        console.error("Error updating apartment listing:", err);
-        res.status(500).json({ error: "Internal server error", message: err.message });
-    }
-});
-
-
-
-
 // SOFT DELETE (DEACTIVATE) AN APARTMENT LISTING
 router.put("/deactivate/:apartmentId", verifyUserToken, async (req, res) => {
     try {
@@ -354,8 +320,7 @@ router.put("/deactivate/:apartmentId", verifyUserToken, async (req, res) => {
 });
 
 
-
-// REACTIVATE AN APARTMENT LISTING
+// COMBINED REACTIVATE AND UPDATE APARTMENT LISTING
 router.put("/reactivate/:apartmentId", verifyUserToken, async (req, res) => {
     try {
         const { apartmentId } = req.params;
@@ -372,14 +337,21 @@ router.put("/reactivate/:apartmentId", verifyUserToken, async (req, res) => {
             return res.status(400).json({ error: "Apartment listing is already active." });
         }
 
-        // Reactivate the apartment
-        apartment.isAvailable = true;
-        const updatedApartment = await apartment.save();
+        // Prepare update data - always set isAvailable to true, plus any additional data
+        const updateData = { isAvailable: true, ...req.body };
+
+        // Reactivate and update the apartment
+        const updatedApartment = await Apartment.findByIdAndUpdate(
+            apartmentId,
+            { $set: updateData },
+            { new: true }
+        );
 
         res.status(200).json({
             message: "Apartment listing has been successfully reactivated.",
             updatedApartment,
         });
+
     } catch (err) {
         console.error("Error reactivating apartment listing:", err);
         res.status(500).json({ error: "Internal server error" });
@@ -602,6 +574,45 @@ router.get("/search/deactivated", verifyUserToken, async (req, res) => {
             error: "Internal server error",
             message: err.message 
         });
+    }
+});
+
+
+// GET A SPECIFIC DEACTIVATED APARTMENT LISTING POSTED BY A USER(Agent / Landlord)
+router.get("/:userId/apartment/deactivated/:apartmentId", verifyUserToken, async (req, res) => {
+    try {
+        const { userId, apartmentId } = req.params;
+
+        // Check if the authenticated user is requesting their own listing
+        if (req.user.id !== userId) {
+            return res.status(403).json({ error: "Forbidden: You can only view your own listings." });
+        }
+
+        // Find the user's listings
+        const userListings = await UserListings.findOne({ userId }).populate("apartment_listings.ApartmentId");
+
+        if (!userListings) {
+            return res.status(404).json({ error: "No listings found for this user." });
+        }
+
+        // Find the specific deactivated apartment listing
+        const specificListing = userListings.apartment_listings.find(
+            (listing) => listing.ApartmentId && 
+                listing.ApartmentId._id.toString() === apartmentId &&
+                !listing.ApartmentId.isAvailable  // Changed condition to find deactivated listings
+        );
+
+        if (!specificListing) {
+            return res.status(404).json({ 
+                error: "Deactivated apartment listing not found." 
+            });
+        }
+
+        res.status(200).json(specificListing.ApartmentId);
+
+    } catch (err) {
+        console.error("Error fetching specific deactivated apartment listing:", err);
+        res.status(500).json({ error: "Internal server error", message: err.message });
     }
 });
 

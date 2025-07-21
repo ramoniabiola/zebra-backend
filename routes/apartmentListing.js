@@ -385,7 +385,10 @@ router.get("/search", async (req, res) => {
 
         const skip = (page - 1) * limit;
         
-        const listings = await Apartment.find(query)
+        const listings = await Apartment.find({
+            ...query,
+            isAvailable: true
+        })
         .sort(sortObj)
         .skip(skip)
         .limit(parseInt(limit));
