@@ -28,6 +28,7 @@ router.get("/:userId", verifyUserToken, async (req, res) => {
 
         if (!activeListings || activeListings.length === 0) {
             return res.status(200).json({
+
                 message: "No active apartment listings found.",
                 currentPage: Number(page),
                 totalPages: 0,
@@ -38,7 +39,18 @@ router.get("/:userId", verifyUserToken, async (req, res) => {
         }
 
 
-        activeListings.sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
+        activeListings.sort((a, b) => {
+            const aDate = a.ApartmentId.createdAt.getTime() === a.ApartmentId.updatedAt.getTime()
+                ? new Date(a.ApartmentId.createdAt)
+                : new Date(a.ApartmentId.updatedAt);
+                
+            const bDate = b.ApartmentId.createdAt.getTime() === b.ApartmentId.updatedAt.getTime()
+                ? new Date(b.ApartmentId.createdAt)
+                : new Date(b.ApartmentId.updatedAt);
+                
+            return bDate - aDate; // Descending order
+        });
+
 
 
         const totalListings = activeListings.length;
@@ -393,7 +405,17 @@ router.get("/deactivated/:userId", verifyUserToken, async (req, res) => {
         }
 
         // Sort by postedAt (descending)
-        deactivatedListings.sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
+        deactivatedListings.sort((a, b) => {
+            const aDate = a.ApartmentId.createdAt.getTime() === a.ApartmentId.updatedAt.getTime()
+                ? new Date(a.ApartmentId.createdAt)
+                : new Date(a.ApartmentId.updatedAt);
+            
+            const bDate = b.ApartmentId.createdAt.getTime() === b.ApartmentId.updatedAt.getTime()
+                ? new Date(b.ApartmentId.createdAt)
+                : new Date(b.ApartmentId.updatedAt);
+            
+            return bDate - aDate; // Descending order
+        });
 
         // Pagination
         const totalListings = deactivatedListings.length;

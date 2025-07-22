@@ -71,7 +71,7 @@ router.post("/login", async (req, res) => {
         if (error.message.includes("Incorrect username...") || error.message.includes("Incorrect password...")) {
             return res.status(401).json({ error: error.message }); // Unauthorized
         }
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: "Internal server error" });
     }         
 }); 
 

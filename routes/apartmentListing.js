@@ -147,29 +147,85 @@ router.get("/find/:id", async (req, res) => {
 // GET ALL AVAILABLE APARTMENT LISTINGS (paginated approach to apartment listings)
 router.get("/", async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1; // Default to page 1
-        const limit = parseInt(req.query.limit) || 10; // Default limit to 10 listings per request
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
+        const sortBy = req.query.sortBy || "recent"; // Default to 'recent'
 
-        // Fetch only available listings with pagination
-        const listings = await Apartment.find({ isAvailable: true })
-        .sort({ createdAt: -1 }) // Latest listings first
-        .skip(skip)
-        .limit(limit);
+        let listings = [];
+        let total = await Apartment.countDocuments({ isAvailable: true });
 
-        // Get total count of available listings only
-        const total = await Apartment.countDocuments({ isAvailable: true });
+        // 1. Recently created or updated first
+        if (sortBy === "recent") {
+            listings = await Apartment.aggregate([
+                { $match: { isAvailable: true } },
+                {
+                    $addFields: {
+                        sortDate: {
+                            $cond: {
+                              if: { $eq: ["$createdAt", "$updatedAt"] },
+                              then: "$createdAt",
+                              else: "$updatedAt",
+                            },
+                        },
+                    },
+                },
+                { $sort: { sortDate: -1 } },
+                { $skip: skip },
+                { $limit: limit },
+            ]);
+        }
+
+        //  2. Randomized listings
+        else if (sortBy === "random") {
+            listings = await Apartment.aggregate([
+                { $match: { isAvailable: true } },
+                { $sample: { size: limit } }, // Randomly pick 'limit' listings
+            ]);
+        }
+
+
+        //  3. Most common locations first
+        else if (sortBy === "popular") {
+            const locationFrequency = await Apartment.aggregate([
+              { $match: { isAvailable: true } },
+              {
+                $group: {
+                  _id: "$location",
+                  count: { $sum: 1 },
+                },
+              },
+              { $sort: { count: -1 } },
+            ]);
+
+            const orderedLocations = locationFrequency.map((loc) => loc._id);
+
+            listings = await Apartment.aggregate([
+                { $match: { isAvailable: true } },
+                {
+                $addFields: {
+                    locationOrder: {
+                        $indexOfArray: [orderedLocations, "$location"],
+                    },
+                },
+                },
+                { $sort: { locationOrder: 1 } },
+                { $skip: skip },
+                { $limit: limit },
+            ]);
+        }
 
         res.status(200).json({
             listings,
             total,
-            hasMore: skip + listings.length < total // Check if more pages exist
+            hasMore: skip + listings.length < total,
         });
     } catch (err) {
-        console.error("Error fetching available apartment listings:", err);
+        console.error("Error fetching apartment listings:", err);
         res.status(500).json({ error: "Internal server error" });
     }
 });
+
 
 
 // SEARCH APARTMENT LISTINGS(search query) 
