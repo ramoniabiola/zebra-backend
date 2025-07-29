@@ -26,7 +26,7 @@ router.post("/register", async (req, res) => {
     
     } catch(error) {
         // If an error occurs during signup, send an error response
-        res.status(400).json({error: error.message});
+        res.status(400).json({error: error.message || "Internal server error"});
     }
 });
 
@@ -71,7 +71,7 @@ router.post("/login", async (req, res) => {
         if (error.message.includes("Incorrect username...") || error.message.includes("Incorrect password...")) {
             return res.status(401).json({ error: error.message }); // Unauthorized
         }
-        res.status(500).json({ error: "Internal server error" });
+        res.status(500).json({ error: error.message || "Internal server error" });
     }         
 }); 
 

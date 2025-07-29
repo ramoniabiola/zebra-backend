@@ -17,6 +17,7 @@ import userRoute from "./routes/user.js";
 import apartmentListingRoute from "./routes/apartmentListing.js";
 import userBookmarkRoute from "./routes/userBookmark.js";
 import userListingsRoute from "./routes/userListings.js";
+import userVerificationRoute from "./email-verification/send-verification-code.js"
 
 
 // Start Express.js
@@ -55,6 +56,7 @@ app.use("/api/user", userRoute)
 app.use("/api/apartments", apartmentListingRoute)
 app.use("/api/bookmarks", userBookmarkRoute)
 app.use("/api/user-listings", userListingsRoute)
+app.use("/api/user-verification", userVerificationRoute)
 
 
 

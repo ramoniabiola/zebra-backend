@@ -69,7 +69,7 @@ router.get("/users", verifySuperAdminToken, async (req, res) => {
     try {
         const admins = await UserAdmin.find({}, "-password"); // Exclude passwords
         res.status(200).json(admins);
-    } catch (err) {
+    } catch (error) {
         console.error("Error fetching admins:", err);
         res.status(500).json({ error: "Internal server error" });
     }
@@ -94,7 +94,7 @@ router.get("/user/:id", verifyAdminToken, async (req, res) => {
         }
 
         res.status(200).json(admin);
-    } catch (err) {
+    } catch (error) {
         console.error("Error fetching admin:", err);
         res.status(500).json({ error: error.message });
     }
@@ -120,7 +120,7 @@ router.delete("/user/:id", verifySuperAdminToken, async (req, res) => {
         await logAdminAction(adminId, `[${timestamp}]: ${adminId} deleted ${deletedAdmin.role}-${deletedAdmin.name}'s Account`, id);
 
         res.status(200).json({ message: "Admin deleted successfully" });
-    } catch (err) {
+    } catch (error) {
         console.error("Error deleting admin:", err);
         res.status(500).json({ error: "Internal server error" });
     }
@@ -153,7 +153,7 @@ router.patch("/user/role/:id", verifySuperAdminToken, async (req, res) => {
         await logAdminAction(adminId, `[${timestamp}]: ${adminId} changed ${updatedAdmin.role}-${updatedAdmin.name}'s Role`, id);
 
         res.status(200).json(updatedAdmin);
-    } catch (err) {
+    } catch (error) {
         console.error("Error updating admin role:", err);
         res.status(500).json({ error: "Internal server error" });
     }
@@ -175,7 +175,7 @@ router.get("/stats", verifyAdminToken, async (req, res) => {
             totalListings,
             recentListings,
         });
-    } catch (err) {
+    } catch (error) {
         console.error("Error fetching admin stats:", err);
         res.status(500).json({ error: "Internal server error" });
     }
@@ -196,7 +196,7 @@ router.get("/reports", verifyAdminToken, async (req, res) => {
         }
 
         res.status(200).json(reports);
-    } catch (err) {
+    } catch (error) {
         console.error("Error fetching reports:", err);
         res.status(500).json({ error: "Internal server error" });
     }
@@ -226,7 +226,7 @@ router.patch("/resolve-report/:reportId", verifyAdminToken, async (req, res) => 
         await Apartment.findByIdAndUpdate(report.apartmentId, { $inc: { reportCount: -1 } });
 
         res.status(200).json({ message: "Report resolved successfully.", report });
-    } catch (err) {
+    } catch (error) {
         console.error("Error resolving report:", err);
         res.status(500).json({ error: "Internal server error" });
     }
@@ -254,7 +254,7 @@ router.patch("/user/suspend/:id", verifyAdminToken, async (req, res) => {
         await logAdminAction(adminId, `[${timestamp}]: ${adminId} suspended ${updatedUser.role}-${updatedUser.username}'s Account`, id, req.ip);
 
         res.status(200).json({ message: `User ${isSuspended ? "suspended" : "unsuspended"} successfully.` });
-    } catch (err) {
+    } catch (error) {
         console.error("Error suspending user:", err);
         res.status(500).json({ error: "Internal server error" });
     }
@@ -274,9 +274,9 @@ router.get("/logs", verifySuperAdminToken, async (req, res) => {
         }
 
         res.status(200).json(logs);
-    } catch (err) {
+    } catch (error) {
         console.error("Error fetching logs:", err);
-        res.status(500).json({ error: "Internal server error" });
+        res.stastus(500).json({ error: "Internal server error" });
     }
 });
 

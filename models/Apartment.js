@@ -6,7 +6,7 @@ const ApartmentSchema = new mongoose.Schema(
         apartment_type: { 
             type: String, 
             required: true, 
-            enum: ["self-contained", "1-bedroom", "2-bedroom", "3-bedroom", "duplex", "studio", "mini-flat", "shared-apartment"] 
+            enum: ["self-contained", "1-bedroom", "2-bedroom", "3-bedroom", "4-bedroom", "5-bedroom", "semi-detached-duplex", "duplex", "studio", "mini-flat", "shared-apartment"] 
         },
         price: { type: Number, required: true },
         payment_frequency: { type: String, enum: ["monthly", "quarterly", "yearly"], required: true },
@@ -40,7 +40,6 @@ ApartmentSchema.index({
     location: 'text',
     apartment_type: 'text'
 });
-
 
 
 export default mongoose.model("Apartment", ApartmentSchema);
