@@ -46,13 +46,12 @@ router.post("/login", async (req, res) => {
             return res.status(500).json({ error: "Login failed, please try again." });
         }
 
-        // Generate JWT with User ID and Role
+        // Generate JWT with User ID, Role, and Email
         const accessToken = jwt.sign(
-            { id: user._id, role: user.role }, 
+            { id: user._id, role: user.role, email: user.email }, 
             process.env.JWT_SECRET_KEY,
-            { expiresIn: "14d" } // Token expires in 14days
+            { expiresIn: "14d" }
         );
-
 
         // Destructure user object and omit 'password' field
         const { password: hashedPassword, ...userDataWithoutPassword } = user._doc;

@@ -60,42 +60,45 @@ router.post("/upload", upload.single("image"), async (req, res) => {
 
 
 // UPDATE USER
-router.put("/:id", verifyGeneralUserToken, async (req, res) => {
+router.put("/:email", verifyGeneralUserToken, async (req, res) => {
     try {
-        // the logged-in user can only update their own info
-        if (req.user.id !== req.params.id) {
-            return res.status(403).json({ error: "Forbidden: You can only update your own profile." });
-        } 
+        const { email } = req.params;
 
-        // Prevention of sensitive updates (e.g., role change)
-        delete req.body.role;
+        // Find the user by email
+        const user = await User.findOne({ email });
 
-        // Encrypt password if it's being updated
-        if (req.body.password) {
-            req.body.password = await bcrypt.hash(req.body.password, 10); // Salt rounds = 10
-        }
-  
-        // Find and update the user by ID
-        const updatedUser = await User.findByIdAndUpdate(
-            req.params.id, 
-            { $set: req.body }, 
-            { new: true, select: "-password" } // Exclude password in response
-        );
-
-        // If user not found, return 404 Not Found
-        if (!updatedUser) {
+        // If user doesn't exist
+        if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
 
-        // Return updated user
+        // Check if the logged-in user is trying to update their own profile
+        if (req.user.email !== email) {
+            return res.status(403).json({ error: "Forbidden: You can only update your own profile." });
+        }
+
+        // Prevent updating role field
+        delete req.body.role;
+
+        // Hash password if it's being updated
+        if (req.body.password) {
+            req.body.password = await bcrypt.hash(req.body.password, 10);
+        }
+
+        // Update the user by email
+        const updatedUser = await User.findOneAndUpdate(
+            { email },
+            { $set: req.body },
+            { new: true }
+        ).select("-password"); 
+
         res.status(200).json(updatedUser);
     } catch (err) {
-
-        // Handle unexpected errors
         console.error("Error updating user:", err);
         res.status(500).json({ error: "Internal server error" });
     }
 });
+
 
 
 
