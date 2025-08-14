@@ -19,7 +19,14 @@ router.get("/:userId", verifyUserToken, async (req, res) => {
         const userListings = await UserListings.findOne({ userId }).populate("apartment_listings.ApartmentId");
 
         if (!userListings) {
-            return res.status(404).json({ error: "No listings found for this user." });
+            return res.status(200).json({ 
+                message: "No active apartment listings found.",
+                currentPage: Number(page),
+                totalPages: 0,
+                totalListings: 0,
+                listingsPerPage: Number(limit),
+                apartments: [],
+            });
         }
 
         const activeListings = userListings.apartment_listings.filter(
@@ -28,7 +35,6 @@ router.get("/:userId", verifyUserToken, async (req, res) => {
 
         if (!activeListings || activeListings.length === 0) {
             return res.status(200).json({
-
                 message: "No active apartment listings found.",
                 currentPage: Number(page),
                 totalPages: 0,
@@ -385,7 +391,14 @@ router.get("/deactivated/:userId", verifyUserToken, async (req, res) => {
         const userListings = await UserListings.findOne({ userId }).populate("apartment_listings.ApartmentId");
 
         if (!userListings) {
-            return res.status(404).json({ error: "No listings found for this user." });
+            return res.status(200).json({ 
+                message: "No deactivated apartment listings found.",
+                currentPage: Number(page),
+                totalPages: 0,
+                totalListings: 0,
+                listingsPerPage: Number(limit),
+                apartments: [],
+            });
         }
 
         // Filter: only deactivated listings (isAvailable === false)

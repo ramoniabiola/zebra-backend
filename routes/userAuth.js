@@ -1,34 +1,81 @@
 import { Router } from "express";
 import User from "../models/User.js";
+import VerificationCode from '../models/VerificationCode.js';
+import { generateCode } from '../utils/generate-code.js';
+import { sendVerificationCode } from '../utils/send-verification-code.js';
 import jwt from "jsonwebtoken";
 
 const router = Router();
 
 
-// USER REGISTRATION
-router.post("/register", async (req, res) => {
-    const { password, ...userData } = req.body;
+// USER REGISTRATION OPERATION
+router.post('/send-verification-code', async (req, res) => {
+    const { email } = req.body;
+
+    const code = generateCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // Expires in 10 min
 
     try {
-        // Call the static signup method of the User model
-        const user = await User.signup(password, userData);
+        // Save or update code in DB
+        await VerificationCode.findOneAndUpdate(
+            { email },
+            { code, expiresAt },
+            { upsert: true }
+        );
 
-        // Ensure user exists and has a _doc property
-        if (!user || !user._doc) {
-            return res.status(500).json({ error: "User registration failed" });
-        }
-
-        // Destructure user object and omit 'password' field
-        const { password: hashedPassword, ...userDataWithoutPassword } = user._doc;
-    
-        // If signup is successful, send a success response
-        res.status(200).json({ ...userDataWithoutPassword });
-    
-    } catch(error) {
-        // If an error occurs during signup, send an error response
-        res.status(400).json({error: error.message || "Internal server error"});
+        await sendVerificationCode(email, code);
+        res.status(200).json({ message: 'Verification code sent to email.' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Could not send verification code.' });
     }
 });
+
+
+
+router.post('/code-verification', async (req, res) => {
+    const { email, code } = req.body;
+
+    try {
+        const record = await VerificationCode.findOne({ email });
+
+        if (!record || record.code !== code) {
+            return res.status(400).json({ error: 'Invalid or expired code.' });
+        }
+
+        if (record.expiresAt < new Date()) {
+            return res.status(400).json({ error: 'Verification code expired.' });
+        }
+
+        res.status(200).json({ message: 'Email verified successfully.' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Code verification failed.' });
+    }
+});
+
+
+
+router.post('/register', async (req, res) => {
+    const { email, password, ...userData } = req.body;
+
+    try {
+
+        // Create user
+        const user = await User.signup(password, { email, ...userData });
+
+        // Clean up verification record
+        await VerificationCode.deleteOne({ email });
+
+        // Sanitize response
+        const { password: hashed, ...safeUser } = user._doc;
+        res.status(201).json({ ...safeUser });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'User registration failed.' });
+    }
+});
+
 
 
 

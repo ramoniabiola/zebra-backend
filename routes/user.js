@@ -93,8 +93,8 @@ router.put("/:email", verifyGeneralUserToken, async (req, res) => {
         ).select("-password"); 
 
         res.status(200).json(updatedUser);
-    } catch (err) {
-        console.error("Error updating user:", err);
+    } catch (error) {
+        console.error("Error updating user:", error);
         res.status(500).json({ error: "Internal server error" });
     }
 });
