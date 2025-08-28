@@ -11,6 +11,8 @@ import ViewLog from "../models/ViewLog.js";
 import { getClientIp } from "request-ip"; // To get user IP address
 import multer from "multer";
 import cloudinary from "../config/cloudinary.js";
+import { createAndEmitNotification } from "../services/notificationService.js";
+
 
 
 const router = Router();
@@ -50,7 +52,10 @@ router.post("/upload", upload.array("images"), async (req, res) => {
         res.json({ uploadedImages });
     } catch (err) {
         console.error("Image upload error:", err);
-        res.status(500).json({ error: "Image upload failed" });
+        res.status(500).json({ 
+            error: "Image upload failed",
+            message: err.message,
+        });
     }
 });
 
@@ -83,14 +88,23 @@ router.post("/create", verifyUserToken, async (req, res) => {
             { upsert: true, new: true }
         );
 
+        // Notify the owner (landlord or agent)
+        await createAndEmitNotification({
+            userId: req.user.id,
+            role: req.user.role, // "landlord" or "agent"
+            message: "🏡 Your apartment has been successfully listed.",
+            meta: { apartmentId: savedListing._id, title: savedListing.title, location: savedListing.location },
+        });
+
+
         // Return the saved apartment
         res.status(201).json(savedListing);
     } catch (err) {
-    res.status(500).json({
-        error: "Failed to create apartment listing",
-        message: err.message,
-    });
-  }
+        res.status(500).json({
+            error: "Failed to create apartment listing",
+            message: err.message,
+        });
+    }
 });
 
 

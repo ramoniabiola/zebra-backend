@@ -2,6 +2,7 @@ import { Router } from "express";
 import UserListings from "../models/UserListings.js";
 import Apartment from "../models/Apartment.js"
 import verifyUserToken from "../middlewares/verifyUserToken.js"
+import { createAndEmitNotification } from "../services/notificationService.js";
 
 
 const router = Router();
@@ -111,7 +112,6 @@ router.get("/:userId/apartment/:apartmentId", verifyUserToken, async (req, res) 
         }
 
         res.status(200).json(specificListing.ApartmentId);
-
     } catch (err) {
         console.error("Error fetching specific apartment listing:", err);
         res.status(500).json({ error: "Internal server error", message: err.message });
@@ -364,6 +364,15 @@ router.put("/reactivate/:apartmentId", verifyUserToken, async (req, res) => {
             { $set: updateData },
             { new: true }
         );
+
+        // Notify User (landlord or agent)
+        await createAndEmitNotification({
+            userId: req.user.id,
+            role: req.user.role, // "landlord" or "agent"
+            message: "🏠 Your apartment has been successfully reactivated. now available again for rent",
+            meta: { apartmentId: apartmentId, title: updatedApartment.title, location: updatedApartment.location },
+        });
+        
 
         res.status(200).json({
             message: "Apartment listing has been successfully reactivated.",

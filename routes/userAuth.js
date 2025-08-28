@@ -4,6 +4,7 @@ import VerificationCode from '../models/VerificationCode.js';
 import { generateCode } from '../utils/generate-code.js';
 import { sendVerificationCode } from '../utils/send-verification-code.js';
 import jwt from "jsonwebtoken";
+import { createAndEmitNotification } from "../services/notificationService.js";
 
 const router = Router();
 
@@ -69,6 +70,15 @@ router.post('/register', async (req, res) => {
 
         // Sanitize response
         const { password: hashed, ...safeUser } = user._doc;
+
+
+        // Notify User(tenant / landlord or agent)
+        await createAndEmitNotification({
+            userId: user._id,
+            role: user.role, 
+            message: `🎉 Welcome ${user.username}!, Your account has been successfully created.`
+        });
+
         res.status(201).json({ ...safeUser });
     } catch (error) {
         console.error(error);
@@ -114,10 +124,10 @@ router.post("/login", async (req, res) => {
         // Send user data in response (excluding password)
         res.status(200).json(userDataWithoutPassword);
     } catch (error) {
-        if (error.message.includes("Incorrect username...") || error.message.includes("Incorrect password...")) {
+        if (error.message.includes("Incorrect email...") || error.message.includes("Incorrect password...")) {
             return res.status(401).json({ error: error.message }); // Unauthorized
         }
-        res.status(500).json({ error: error.message || "Internal server error" });
+        res.status(500).json({ error: "Internal server error" });
     }         
 }); 
 

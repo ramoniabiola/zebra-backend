@@ -8,6 +8,7 @@ import cors from "cors"
 import mongoose from "mongoose"; 
 import http from "http";
 import cookieParser from "cookie-parser";
+import { Server } from "socket.io";
 
 // Routes
 import adminAuthRoute from "./routes/adminAuth.js";
@@ -17,6 +18,7 @@ import userRoute from "./routes/user.js";
 import apartmentListingRoute from "./routes/apartmentListing.js";
 import userBookmarkRoute from "./routes/userBookmark.js";
 import userListingsRoute from "./routes/userListings.js";
+import notificationRoute from "./routes/notification.js";
 
 
 // Start Express.js
@@ -35,9 +37,19 @@ app.use(cors({
 }));
 
 
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173", // frontend
+    methods: ["GET", "POST", "PATCH"],
+    credentials: true,
+  }
+});
+
+
+
 // Database Connection
 mongoose.connect(process.env.MONGO_URL, {
-    serverSelectionTimeoutMS: 5000, 
+  serverSelectionTimeoutMS: 30000, 
 })
 .then(() => console.log("DB connection successful..."))
 .catch((err) => console.error("Database connection error:", err));
@@ -55,6 +67,7 @@ app.use("/api/user", userRoute)
 app.use("/api/apartments", apartmentListingRoute)
 app.use("/api/bookmarks", userBookmarkRoute)
 app.use("/api/user-listings", userListingsRoute)
+app.use("/api/notifications", notificationRoute);
 
 
 
@@ -63,3 +76,30 @@ app.use("/api/user-listings", userListingsRoute)
 server.listen(process.env.PORT, () => {
   console.log(`Backend server is running...`)
 }); 
+
+
+
+// Store connected users
+const onlineUsers = new Map();
+
+
+io.on("connection", (socket) => {
+  
+  socket.on("registerUser", (userId) => { 
+    if (!onlineUsers.has(userId)) onlineUsers.set(userId, new Set());
+    onlineUsers.get(userId).add(socket.id);
+    socket.data.userId = userId;
+  });
+ 
+  
+  socket.on("disconnect", () => {
+    const userId = socket.data.userId;
+    if (userId && onlineUsers.has(userId)) {
+      const set = onlineUsers.get(userId);
+      set.delete(socket.id);
+      if (set.size === 0) onlineUsers.delete(userId);
+    }
+  });
+});
+
+export { app, server, io, onlineUsers };

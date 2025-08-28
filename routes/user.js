@@ -6,6 +6,7 @@ import moment from "moment";
 import bcrypt from "bcryptjs";
 import multer from "multer";
 import cloudinary from "../config/cloudinary.js";
+import { createAndEmitNotification } from "../services/notificationService.js";
 
 
 
@@ -67,12 +68,11 @@ router.put("/:email", verifyGeneralUserToken, async (req, res) => {
         // Find the user by email
         const user = await User.findOne({ email });
 
-        // If user doesn't exist
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
 
-        // Check if the logged-in user is trying to update their own profile
+        // Ensure user is updating their own profile
         if (req.user.email !== email) {
             return res.status(403).json({ error: "Forbidden: You can only update your own profile." });
         }
@@ -80,17 +80,29 @@ router.put("/:email", verifyGeneralUserToken, async (req, res) => {
         // Prevent updating role field
         delete req.body.role;
 
+        let isPasswordUpdated = false;
+
         // Hash password if it's being updated
         if (req.body.password) {
             req.body.password = await bcrypt.hash(req.body.password, 10);
+            isPasswordUpdated = true;
         }
 
-        // Update the user by email
+        // Update user
         const updatedUser = await User.findOneAndUpdate(
             { email },
             { $set: req.body },
             { new: true }
-        ).select("-password"); 
+        ).select("-password");
+
+        // Notify user only if password was updated
+        if (isPasswordUpdated) {
+            await createAndEmitNotification({
+                userId: updatedUser._id,
+                role: updatedUser.role,
+                message: `🔐 Congrats ${updatedUser.username}!, Your password has been successfully updated and your account is secured.`
+            });
+        }
 
         res.status(200).json(updatedUser);
     } catch (error) {
@@ -98,7 +110,6 @@ router.put("/:email", verifyGeneralUserToken, async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 });
-
 
 
 
