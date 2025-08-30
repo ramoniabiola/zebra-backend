@@ -161,85 +161,67 @@ router.get("/find/:id", async (req, res) => {
 // GET ALL AVAILABLE APARTMENT LISTINGS (paginated approach to apartment listings)
 router.get("/", async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.max(1, parseInt(req.query.limit, 10) || 20);
         const skip = (page - 1) * limit;
-        const sortBy = req.query.sortBy || "recent"; // Default to 'recent'
-
-        let listings = [];
-        let total = await Apartment.countDocuments({ isAvailable: true });
-
-        // 1. Recently created or updated first
+        const sortBy = req.query.sortBy || "recent";
+        
+        const match = { isAvailable: true };
+        const total = await Apartment.countDocuments(match);
+        
+        // start pipeline
+        let pipeline = [{ $match: match }];
+        
         if (sortBy === "recent") {
-            listings = await Apartment.aggregate([
-                { $match: { isAvailable: true } },
-                {
-                    $addFields: {
-                        sortDate: {
-                            $cond: {
-                              if: { $eq: ["$createdAt", "$updatedAt"] },
-                              then: "$createdAt",
-                              else: "$updatedAt",
-                            },
+            pipeline.push({
+                $addFields: {
+                    sortDate: {
+                        $cond: {
+                            if: { $eq: ["$createdAt", "$updatedAt"] },
+                            then: "$createdAt",
+                            else: "$updatedAt",
                         },
                     },
                 },
-                { $sort: { sortDate: -1 } },
-                { $skip: skip },
-                { $limit: limit },
-            ]);
-        }
+            });
 
-        //  2. Randomized listings
-        else if (sortBy === "random") {
-            listings = await Apartment.aggregate([
-                { $match: { isAvailable: true } },
-                { $sample: { size: limit } }, // Randomly pick 'limit' listings
-            ]);
-        }
+            pipeline.push({ $sort: { sortDate: -1 } });
+        } else if (sortBy === "random") {
+            // Use $rand + $sort so we can paginate with $skip/$limit
+            pipeline.push({ $addFields: { randomSort: { $rand: {} } } });
+            pipeline.push({ $sort: { randomSort: 1 } });
+        } else if (sortBy === "popular") {
 
-
-        //  3. Most common locations first
-        else if (sortBy === "popular") {
+            // build orderedLocations first
             const locationFrequency = await Apartment.aggregate([
-              { $match: { isAvailable: true } },
-              {
-                $group: {
-                  _id: "$location",
-                  count: { $sum: 1 },
-                },
-              },
-              { $sort: { count: -1 } },
+                { $match: match },
+                { $group: { _id: "$location", count: { $sum: 1 } } },
+                { $sort: { count: -1 } },
             ]);
-
-            const orderedLocations = locationFrequency.map((loc) => loc._id);
-
-            listings = await Apartment.aggregate([
-                { $match: { isAvailable: true } },
-                {
+            const orderedLocations = locationFrequency.map((l) => l._id);
+            pipeline.push({
                 $addFields: {
-                    locationOrder: {
-                        $indexOfArray: [orderedLocations, "$location"],
-                    },
+                    locationOrder: { $indexOfArray: [orderedLocations, "$location"] },
                 },
-                },
-                { $sort: { locationOrder: 1 } },
-                { $skip: skip },
-                { $limit: limit },
-            ]);
+            });
+            pipeline.push({ $sort: { locationOrder: 1 } });
         }
-
-        res.status(200).json({
+      
+        // finally apply skip + limit (always)
+        pipeline.push({ $skip: skip }, { $limit: limit });
+      
+        const listings = await Apartment.aggregate(pipeline);
+      
+        return res.status(200).json({
             listings,
             total,
             hasMore: skip + listings.length < total,
         });
     } catch (err) {
         console.error("Error fetching apartment listings:", err);
-        res.status(500).json({ error: "Internal server error" });
+        return res.status(500).json({ error: "Internal server error" });
     }
 });
-
 
 
 // SEARCH APARTMENT LISTINGS(search query) 
