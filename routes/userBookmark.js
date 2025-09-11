@@ -61,7 +61,8 @@ router.post("/", verifyTenantToken, async (req, res) => {
 router.get("/", verifyTenantToken, async (req, res) => {
     try {
         const userId = req.user.id;
-        const { page = 1, limit = 10 } = req.query; // Pagination
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.max(1, parseInt(req.query.limit, 10) || 10);
 
         if (req.user.role !== "tenant") {
             return res.status(403).json({ error: "Only tenants can access bookmarks." });
@@ -95,36 +96,6 @@ router.get("/", verifyTenantToken, async (req, res) => {
         });
     } catch (err) {
         console.error("Error fetching bookmarks:", err);
-        res.status(500).json({ error: "Internal server error" });
-    }
-});
-
-
-
-// REMOVE A BOOKMARKED APARTMENT LISTING
-router.delete("/:apartmentId", verifyTenantToken, async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const apartmentId = req.params.apartmentId;
-
-        // Find the user's bookmark entry
-        const userBookmark = await UserBookmark.findOne({ userId });
-
-        if (!userBookmark) {
-            return res.status(404).json({ error: "No bookmarks found for this user." });
-        }
-
-        // Filter out the apartment being removed
-        userBookmark.apartment_listings = userBookmark.apartment_listings.filter(
-            (bookmark) => bookmark.apartmentId.toString() !== apartmentId
-        );
-
-        // Save the updated bookmark list
-        await userBookmark.save();
-
-        res.status(200).json({ message: "Bookmark removed successfully." });
-    } catch (err) {
-        console.error("Error removing bookmark:", err);
         res.status(500).json({ error: "Internal server error" });
     }
 });
@@ -274,6 +245,36 @@ router.get("/search", verifyTenantToken, async (req, res) => {
         res.status(500).json({ 
             message: "Internal server error"
         });
+    }
+});
+
+
+
+// REMOVE A BOOKMARKED APARTMENT LISTING
+router.delete("/:apartmentId", verifyTenantToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const apartmentId = req.params.apartmentId;
+
+        // Find the user's bookmark entry
+        const userBookmark = await UserBookmark.findOne({ userId });
+
+        if (!userBookmark) {
+            return res.status(404).json({ error: "No bookmarks found for this user." });
+        }
+
+        // Filter out the apartment being removed
+        userBookmark.apartment_listings = userBookmark.apartment_listings.filter(
+            (bookmark) => bookmark.apartmentId.toString() !== apartmentId
+        );
+
+        // Save the updated bookmark list
+        await userBookmark.save();
+
+        res.status(200).json({ message: "Bookmark removed successfully." });
+    } catch (err) {
+        console.error("Error removing bookmark:", err);
+        res.status(500).json({ error: "Internal server error" });
     }
 });
 

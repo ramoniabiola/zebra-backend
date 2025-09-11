@@ -11,7 +11,7 @@ const router = Router();
 router.get("/:userId", verifyUserToken, async (req, res) => {
     try {
         const { userId } = req.params;
-        const { page = 1, limit = 10 } = req.query;
+        const { page, limit } = req.query;
 
         if (req.user.id !== userId) {
             return res.status(403).json({ error: "Forbidden: You can only view your own listings." });
@@ -131,8 +131,8 @@ router.get("/search/active", verifyUserToken, async (req, res) => {
             min_price,
             max_price,
             keyword, // General search term
-            page = 1, 
-            limit = 10 
+            page, 
+            limit
         } = req.query;
 
         // Parse pagination values safely
@@ -391,7 +391,7 @@ router.put("/reactivate/:apartmentId", verifyUserToken, async (req, res) => {
 router.get("/deactivated/:userId", verifyUserToken, async (req, res) => {
     try {
         const { userId } = req.params;
-        const { page = 1, limit = 10 } = req.query;
+        const { page, limit } = req.query;
 
         if (req.user.id !== userId) {
             return res.status(403).json({ error: "Forbidden: You can only view your own listings." });
@@ -474,8 +474,8 @@ router.get("/search/deactivated", verifyUserToken, async (req, res) => {
             min_price,
             max_price,
             keyword, // General search term
-            page = 1, 
-            limit = 10 
+            page, 
+            limit
         } = req.query;
 
         // Parse pagination values safely

@@ -241,6 +241,11 @@ router.get("/search", async (req, res) => {
             limit = 10,
         } = req.query;
 
+
+        page = parseInt(page) || 1;
+        limit = parseInt(limit) || 10;
+
+
         // If 'q' is provided but no specific keyword, use 'q' as keyword
         if (q && !keyword) {
             keyword = q;
@@ -436,6 +441,12 @@ router.get("/search", async (req, res) => {
         }
 
         const skip = (page - 1) * limit;
+
+        // Count total docs for pagination info
+        const totalCount = await Apartment.countDocuments({
+          ...query,
+          isAvailable: true,
+        });
         
         const listings = await Apartment.find({
             ...query,
@@ -443,15 +454,28 @@ router.get("/search", async (req, res) => {
         })
         .sort(sortObj)
         .skip(skip)
-        .limit(parseInt(limit));
+        .limit(limit);
 
 
         // If Apartment not found, return 404 Not Found
         if (listings.length === 0) {
-            return res.status(404).json({ error: "Apartments not found..." });
+            return res.status(404).json({
+                error: "No apartments found for your search.",
+                total: 0,
+                page,
+                totalPages: 0,
+                hasNextPage: false,
+            });
         }
 
-        res.status(200).json(listings);
+        res.status(200).json({
+            results: listings,
+            total: totalCount,
+            page,
+            totalPages: Math.ceil(totalCount / limit),
+            hasNextPage: page * limit < totalCount,
+            hasPrevPage: page > 1,
+        });
     } catch (err) {
         console.error("Error fetching apartment listings:", err);
         res.status(500).json({ error: "Internal server error" });
