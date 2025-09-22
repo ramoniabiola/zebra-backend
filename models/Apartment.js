@@ -9,7 +9,7 @@ const ApartmentSchema = new mongoose.Schema(
             enum: ["self-contained", "1-bedroom", "2-bedroom", "3-bedroom", "4-bedroom", "5-bedroom", "semi-detached-duplex", "duplex", "studio", "mini-flat", "shared-apartment"] 
         },
         price: { type: Number, required: true },
-        payment_frequency: { type: String, enum: ["monthly", "quarterly", "yearly"], required: true },
+        payment_frequency: { type: String, enum: ["daily", "weekly", "monthly", "quarterly", "yearly"], required: true },
         duration: { type: String, required: true },
         location: { type: String, required: true },
         apartment_address: { type: String, required: true },

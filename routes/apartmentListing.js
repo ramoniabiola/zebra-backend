@@ -26,9 +26,18 @@ const upload = multer({ storage });
 router.post("/upload", upload.array("images"), async (req, res) => {
     try {
         const uploadedImages = [];
+        
+        if (!req.files || req.files.length < 5) {
+            return res.status(400).json({ error: "At least 5 images are required." });
+        }
+
+        if (req.files.length > 15) {
+          return res.status(400).json({ error: "Maximum 15 images allowed." });
+        }
+
 
         for (const file of req.files) {
-            const result = await new Promise((resolve, reject) => {
+            const uploaded = await new Promise((resolve, reject) => {
                 const stream = cloudinary.uploader.upload_stream(
                     {
                         folder: "apartments", // optional: organize your uploads
@@ -46,7 +55,7 @@ router.post("/upload", upload.array("images"), async (req, res) => {
                 stream.end(file.buffer);
             });
 
-            uploadedImages.push(result.secure_url); // Store optimized version URL
+            uploadedImages.push(uploaded.secure_url); // Store optimized version URL
         }
 
         res.json({ uploadedImages });

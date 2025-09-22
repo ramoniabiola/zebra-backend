@@ -4,28 +4,36 @@ import verifyGeneralUserToken from "../middlewares/verifyGeneralUserToken.js";
 
 const router = Router();
 
-// Get my notifications
+// Get my notifications (paginated)
 router.get("/", verifyGeneralUserToken, async (req, res) => {
     try {
-        const { role, page = 1, limit = 20, unreadOnly } = req.query;
-        
+        const { role, page = 1, limit = 10, unreadOnly } = req.query;
+
         const filter = { user: req.user.id };
         if (role) filter.role = role;
         if (unreadOnly === "true") filter.isRead = false;
-        
+
         const docs = await Notification.find(filter)
-          .sort({ createdAt: -1 })
-          .skip((Number(page) - 1) * Number(limit))
-          .limit(Number(limit));
-        
-        const total = await Notification.countDocuments(filter);
-        
-        res.json({ notifications: docs, total, page: Number(page), limit: Number(limit) });
+            .sort({ createdAt: -1 })
+            .skip((Number(page) - 1) * Number(limit))
+            .limit(Number(limit));
+
+      const total = await Notification.countDocuments(filter);
+
+        res.json({
+            notifications: docs,
+            total,
+            page: Number(page),
+            limit: Number(limit),
+            totalPages: Math.ceil(total / Number(limit))
+        });
     } catch (error) {
         console.error("Error fetching notifications:", error);
         res.status(500).json({ error: "Internal server error" });
     }
 });
+
+
 
 // Mark one as read
 router.patch("/:id/read", verifyGeneralUserToken, async (req, res) => {
