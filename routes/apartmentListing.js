@@ -27,14 +27,9 @@ router.post("/upload", upload.array("images"), async (req, res) => {
     try {
         const uploadedImages = [];
         
-        if (!req.files || req.files.length < 5) {
-            return res.status(400).json({ error: "At least 5 images are required." });
-        }
-
         if (req.files.length > 15) {
           return res.status(400).json({ error: "Maximum 15 images allowed." });
         }
-
 
         for (const file of req.files) {
             const uploaded = await new Promise((resolve, reject) => {
