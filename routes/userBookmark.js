@@ -282,10 +282,14 @@ router.delete("/:apartmentId", verifyTenantToken, async (req, res) => {
 
 
 // CLEAR ALL USER BOOKMARKS
-
-router.delete("/clear", verifyTenantToken, async (req, res) => {
+router.put("/clear", verifyTenantToken, async (req, res) => {
     try {
+        
         const userId = req.user.id;
+
+        if (!userId) {
+            return res.status(400).json({ error: "Invalid user token" });
+        }
 
         // Find and update the user's bookmark list (set apartment_listings to an empty array)
         const updatedBookmark = await UserBookmark.findOneAndUpdate(
