@@ -117,7 +117,7 @@ router.post("/login", async (req, res) => {
         res.cookie("accessToken", accessToken, {
             httpOnly: true,   // Prevents XSS attacks
             secure: process.env.NODE_ENV === "production", // Use HTTPS in production
-            sameSite: "Strict",  // Prevents CSRF attacks
+            sameSite: "None", // ✅ Must be 'None' for cross-domain requests
             maxAge: 14 * 24 * 60 * 60 * 1000, // 14 days
         }); 
 
