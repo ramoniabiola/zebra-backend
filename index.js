@@ -32,7 +32,10 @@ const server = http.createServer(app)
 
 // Use cors middleware
 app.use(cors({
-  origin: "http://localhost:5173", 
+  origin: [
+    "http://localhost:5173",
+    "https://zebra-frontend-liart.vercel.app",
+  ],
   credentials: true, // Allow credentials (cookies, etc.)
 }));
 
