@@ -18,11 +18,17 @@ router.get("/", verifyGeneralUserToken, async (req, res) => {
             .skip((Number(page) - 1) * Number(limit))
             .limit(Number(limit));
 
-      const total = await Notification.countDocuments(filter);
+        // Count total notifications (regardless of pagination)
+        const total = await Notification.countDocuments(filter);
+
+        // Count total unread notifications (regardless of pagination)
+        const totalUnread = await Notification.countDocuments({ user: req.user.id, isRead: false, ...(role && { role }) });
+
 
         res.json({
             notifications: docs,
             total,
+            totalUnread,
             page: Number(page),
             limit: Number(limit),
             totalPages: Math.ceil(total / Number(limit))
