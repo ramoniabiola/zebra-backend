@@ -3,6 +3,7 @@ import User from "../models/User.js";
 import VerificationCode from '../models/VerificationCode.js';
 import { generateCode } from '../utils/generate-code.js';
 import { sendVerificationCode } from '../utils/send-verification-code.js';
+import { sendWelcomeMail } from "../utils/send-welcome-message.js";
 import jwt from "jsonwebtoken";
 import { createAndEmitNotification } from "../services/notificationService.js";
 
@@ -78,6 +79,9 @@ router.post('/register', async (req, res) => {
             role: user.role, 
             message: `🎉 Welcome ${user.username}!, Your account has been successfully created.`
         });
+
+        // Send welcome email
+        await sendWelcomeMail(email);
 
         res.status(201).json({ ...safeUser });
     } catch (error) {
