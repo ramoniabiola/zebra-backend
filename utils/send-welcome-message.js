@@ -1,21 +1,22 @@
-import dotenv from 'dotenv';
-dotenv.config(); // Load env first
+import nodemailer from "nodemailer";
 
-import { Resend } from 'resend';
+const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: process.env.GMAIL_USER, // your Gmail address
+        pass: process.env.GMAIL_PASS, // App Password (not your login password)
+    },
+});
 
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 
-export const sendWelcomeMail = async (userEmail) => {
-    try {
-        await resend.emails.send({
-            from: 'onboarding@resend.dev',
-            to: userEmail,
-            subject: 'Welcome to Zebra',
-            html: '<p>Hello there! Your signup was successful 🎉</p>',
-        });
-    } catch (error) {
-        console.error("Email failed:", error);
-        throw new Error('Email send failure');
-    }
+export const sendWelcomeMail = async (email) => {
+    const info = await transporter.sendMail({
+        from: `"Zebra App" <${process.env.GMAIL_USER}>`,
+        to: email,
+        subject: "Welcome to Zebra",
+        html: "<p>Hello there! Your signup was successful 🎉</p>",
+    });
+
+    console.log("Email sent:", info.response);
 };
