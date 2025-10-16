@@ -1,4 +1,6 @@
 import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+dotenv.config()
 
 const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -11,12 +13,17 @@ const transporter = nodemailer.createTransport({
 
 
 export const sendWelcomeMail = async (email) => {
-    const info = await transporter.sendMail({
-        from: `"Zebra App" <${process.env.GMAIL_USER}>`,
-        to: email,
-        subject: "Welcome to Zebra",
-        html: "<p>Hello there! Your signup was successful 🎉</p>",
-    });
+    try {
+        const info = await transporter.sendMail({
+            from: `"Zebra App" <${process.env.GMAIL_USER}>`,
+            to: email,
+            subject: "Welcome to Zebra",
+            html: "<p>Hello there! Your signup was successful 🎉</p>",
+        });
 
-    console.log("Email sent:", info.response);
+        console.log("Email sent:", info.response);
+    } catch (error) {
+        console.error("Error sending email:", error);
+    }
 };
+
