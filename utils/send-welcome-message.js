@@ -1,29 +1,28 @@
-import nodemailer from "nodemailer";
+import axios from "axios";
 import dotenv from "dotenv";
 dotenv.config()
 
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.GMAIL_USER, // your Gmail address
-        pass: process.env.GMAIL_PASS, // App Password (not your login password)
-    },
-});
 
-
-
-export const sendWelcomeMail = async (email) => {
+export const sendWelcomeMail = async (recipientEmail) => {
     try {
-        const info = await transporter.sendMail({
-            from: `"Zebra App" <${process.env.GMAIL_USER}>`,
-            to: email,
-            subject: "Welcome to Zebra",
-            html: "<p>Hello there! Your signup was successful 🎉</p>",
-        });
+        const response = await axios.post(
+            "https://api.brevo.com/v3/smtp/email",
+            {
+                sender: { name: "zebra", email: "ramoniabiola61@gmail.com" },
+                to: [{ email: recipientEmail }],
+                subject: "Welcome to Zebra",
+                htmlContent: `<p>Hello there! Your signup was successful 🎉</p>`,
+            },
+            {
+                headers: {
+                    "api-key": process.env.BREVO_API_KEY,
+                    "Content-Type": "application/json",
+                },
+            }
+        );
 
-        console.log("Email sent:", info.response);
+        console.log("Email sent successfully:", response.data);
     } catch (error) {
-        console.error("Error sending email:", error);
+        console.error("Error sending email:", error.response?.data || error.message);
     }
 };
-

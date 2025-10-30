@@ -1,26 +1,31 @@
-import nodemailer from "nodemailer";
+import axios from "axios";
 import dotenv from "dotenv";
 dotenv.config();
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_PASS,
-  },
-});
 
-export const sendVerificationCode = async (email, code) => {
+
+export const sendVerificationCode = async (recipientEmail, code) => {
   try {
-    const info = await transporter.sendMail({
-      from: `"Zebra App" <${process.env.GMAIL_USER}>`,
-      to: email,
-      subject: "Your Verification Code",
-      html: `<p>Your verification code is <strong>${code}</strong></p>`,
-    });
-    console.log("Email sent successfully:", info.response);
+    const response = await axios.post(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        sender: { name: "zebra", email: "ramoniabiola61@gmail.com" },
+        to: [{ email: recipientEmail }],
+        subject: "Your Verification Code",
+        htmlContent: `<p>Your verification code is: <strong>${code}</strong></p>`,
+      },
+      {
+        headers: {
+          "api-key": process.env.BREVO_API_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    
+    console.log("Email sent successfully:", response.data);
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error("Error sending email:", error.response?.data || error.message);
   }
 };
+
 
